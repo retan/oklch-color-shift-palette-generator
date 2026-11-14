@@ -1,0 +1,1600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OKlch Color Palette Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js for 3D Visualization -->
+    <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        /* Custom styles for SVG UI */
+        .point { cursor: grab; transition: r 0.1s; }
+        .point:active { cursor: grabbing; }
+        .point:hover { r: 8; stroke-width: 3; }
+        .handle-line { stroke: #64748b; stroke-width: 1.5; stroke-dasharray: 4; }
+        .curve-1 { stroke: #ffffff; fill: none; stroke-width: 3.5; stroke-linecap: round; }
+        .curve-2 { stroke: #ffffff; fill: none; stroke-width: 3.5; stroke-linecap: round; }
+        .ctrl-point { fill: #f8fafc; stroke: #0f172a; stroke-width: 2; r: 6; }
+        .main-point { fill: #f8fafc; stroke: #0f172a; stroke-width: 2; r: 7; }
+        .inner-point { fill: currentColor; pointer-events: none; }
+        .editor-canvas-svg { cursor: grab; }
+        .editor-canvas-svg.is-panning { cursor: grabbing; }
+        
+        /* Hide scrollbars but keep functionality */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        
+        /* Custom Slider Style */
+        input[type=range].color-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            height: 12px;
+            border-radius: 6px;
+            background: #334155;
+            outline: none;
+        }
+        input[type=range].color-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 2px solid #0f172a;
+            cursor: pointer;
+            box-shadow: 0 0 2px rgba(0,0,0,0.5);
+        }
+        input[type=range].color-slider::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 2px solid #0f172a;
+            cursor: pointer;
+            box-shadow: 0 0 2px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-200 h-screen w-screen overflow-hidden flex flex-col font-sans">
+
+    <!-- Top Area: Controls and Editors -->
+    <div class="flex-1 flex overflow-hidden">
+        
+        <!-- Sidebar Controls -->
+        <aside class="w-80 bg-slate-900 border-r border-slate-800 flex flex-col overflow-y-auto z-10 shrink-0">
+            <div class="p-5 border-b border-slate-800">
+                <div class="flex items-start justify-between gap-2">
+                    <div>
+                        <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">OKlch Palette Plugin</h1>
+                        <p class="text-xs text-slate-400 mt-1">3D curve & multi-section visualizer</p>
+                    </div>
+                    <div class="flex items-center gap-1 shrink-0 pt-0.5">
+                        <button id="undo-btn" disabled title="Undo last change (Ctrl+Z)" class="p-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white disabled:opacity-35 disabled:pointer-events-none transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a5 5 0 015 5v2M3 10l4-4m-4 4l4 4"></path>
+                            </svg>
+                        </button>
+                        <button id="redo-btn" disabled title="Redo last undone change (Ctrl+Y)" class="p-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white disabled:opacity-35 disabled:pointer-events-none transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10H11a5 5 0 00-5 5v2m15-7l-4-4m4 4l-4 4"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-5 space-y-8 flex-1">
+                
+                <!-- Number of Swatches -->
+                <div>
+                    <label class="flex justify-between text-sm font-semibold mb-2">
+                        <span>Color Stops</span>
+                    </label>
+                    <div class="flex items-center gap-3">
+                        <input type="range" id="steps" min="3" max="256" step="1" value="9" class="flex-1 color-slider" style="background: #475569;">
+                        <input type="number" id="steps-num" min="3" max="256" value="9" class="w-16 bg-slate-900 border border-slate-700 rounded text-center text-sm focus:outline-none focus:border-blue-500 text-blue-400 font-mono py-1">
+                    </div>
+                </div>
+
+                <!-- Colors Loop rendered via JS logic below -->
+                <div id="color-inputs-container" class="space-y-6">
+                    <!-- Dynamic content injected here to keep HTML DRY -->
+                </div>
+
+                <!-- Export Options -->
+                <div class="pt-4 border-t border-slate-800">
+                    <button id="export-clrs-btn" class="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold tracking-wider uppercase rounded-lg border border-slate-700 transition-colors flex items-center justify-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        </svg>
+                        Export Infinite Painter (.clrs)
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Visualization Area -->
+        <main class="flex-1 flex flex-col bg-slate-950 relative overflow-hidden">
+            
+            <div class="flex-1 grid grid-cols-1 xl:grid-cols-3 gap-6 p-6 overflow-y-auto">
+                
+                <!-- L vs C Editor -->
+                <div class="flex flex-col items-center bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+                    <h2 class="text-sm font-semibold text-slate-300 mb-4 tracking-wider uppercase">Lightness vs Chroma</h2>
+                    <div class="relative w-full max-w-[300px] aspect-square rounded-lg shadow-inner border border-slate-700/50 overflow-hidden">
+                        <canvas id="bg-lc" width="300" height="300" class="absolute inset-0 w-full h-full"></canvas>
+                        <svg id="svg-lc" viewBox="0 0 300 300" class="editor-canvas-svg absolute inset-0 w-full h-full select-none touch-none bg-transparent">
+                            <!-- Grid generated dynamically -->
+                            <g id="lc-grid"></g>
+                            
+                            <!-- Connecting handle lines -->
+                            <line id="lc-h1-line" class="handle-line" />
+                            <line id="lc-h2-line" class="handle-line" />
+                            <line id="lc-h3-line" class="handle-line" />
+                            <line id="lc-h4-line" class="handle-line" />
+                            
+                            <!-- Curves -->
+                            <path id="lc-curve-1" class="curve-1" />
+                            <path id="lc-curve-2" class="curve-2" />
+                            
+                            <!-- Draggable Nodes -->
+                            <circle id="lc-h-d-out" class="ctrl-point point" />
+                            <circle id="lc-h-m-in" class="ctrl-point point" />
+                            <circle id="lc-h-m-out" class="ctrl-point point" />
+                            <circle id="lc-h-l-in" class="ctrl-point point" />
+                            
+                            <circle id="lc-d" class="main-point point" />
+                            <circle id="lc-d-inner" r="3.5" class="inner-point" />
+                            <circle id="lc-m" class="main-point point" />
+                            <circle id="lc-m-inner" r="3.5" class="inner-point" />
+                            <circle id="lc-l" class="main-point point" />
+                            <circle id="lc-l-inner" r="3.5" class="inner-point" />
+                        </svg>
+                    </div>
+                    <div class="w-full max-w-[300px] flex justify-between text-[10px] text-slate-500 mt-2 px-1">
+                        <span>0 Chroma</span>
+                        <span>0.4 Chroma</span>
+                    </div>
+                    <div class="w-full max-w-[300px] grid grid-cols-2 gap-2 mt-3">
+                        <button id="reflect-lc-l" class="py-1.5 px-2.5 bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-medium rounded-lg border border-slate-700/80 transition-colors flex items-center justify-center gap-1.5" title="Reflect Lightness of all stops and handles around 0.5">
+                            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
+                            </svg>
+                            <span>Invert L (0.5)</span>
+                        </button>
+                        <button id="reflect-lc-c" class="py-1.5 px-2.5 bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-medium rounded-lg border border-slate-700/80 transition-colors flex items-center justify-center gap-1.5" title="Reflect Chroma of all stops and handles around 0.2">
+                            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
+                            </svg>
+                            <span>Invert C (0.2)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- H vs C Editor -->
+                <div class="flex flex-col items-center bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+                    <h2 class="text-sm font-semibold text-slate-300 mb-4 tracking-wider uppercase">Hue vs Chroma (Polar)</h2>
+                    <div class="relative w-full max-w-[300px] aspect-square rounded-full shadow-inner border border-slate-700/50 overflow-hidden">
+                        <canvas id="bg-hc" width="300" height="300" class="absolute inset-0 w-full h-full"></canvas>
+                        <svg id="svg-hc" viewBox="0 0 300 300" class="editor-canvas-svg absolute inset-0 w-full h-full select-none touch-none bg-transparent overflow-visible">
+                            <!-- Grid generated dynamically -->
+                            <g id="hc-grid"></g>
+                            
+                            <!-- Connecting handle lines -->
+                            <line id="hc-h1-line" class="handle-line" />
+                            <line id="hc-h2-line" class="handle-line" />
+                            <line id="hc-h3-line" class="handle-line" />
+                            <line id="hc-h4-line" class="handle-line" />
+                            
+                            <!-- Curves -->
+                            <path id="hc-curve-1" class="curve-1" />
+                            <path id="hc-curve-2" class="curve-2" />
+                            
+                            <!-- Draggable Nodes -->
+                            <circle id="hc-h-d-out" class="ctrl-point point" />
+                            <circle id="hc-h-m-in" class="ctrl-point point" />
+                            <circle id="hc-h-m-out" class="ctrl-point point" />
+                            <circle id="hc-h-l-in" class="ctrl-point point" />
+
+                            <circle id="hc-d" class="main-point point" />
+                            <circle id="hc-d-inner" r="3.5" class="inner-point" />
+                            <circle id="hc-m" class="main-point point" />
+                            <circle id="hc-m-inner" r="3.5" class="inner-point" />
+                            <circle id="hc-l" class="main-point point" />
+                            <circle id="hc-l-inner" r="3.5" class="inner-point" />
+                        </svg>
+                    </div>
+                    <div class="w-full max-w-[300px] text-center text-[10px] text-slate-500 mt-2">
+                        Radial Distance = Chroma | Angle = Hue
+                    </div>
+                    <div class="w-full max-w-[300px] grid grid-cols-2 gap-2 mt-3">
+                        <button id="reflect-hc-h" class="py-1.5 px-2.5 bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-medium rounded-lg border border-slate-700/80 transition-colors flex items-center justify-center gap-1.5" title="Reflect Hue of all stops and handles around 0°">
+                            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                            </svg>
+                            <span>Invert H (0°)</span>
+                        </button>
+                        <button id="reflect-hc-c" class="py-1.5 px-2.5 bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-medium rounded-lg border border-slate-700/80 transition-colors flex items-center justify-center gap-1.5" title="Reflect Chroma of all stops and handles around 0.2">
+                            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
+                            </svg>
+                            <span>Invert C (0.2)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 3D Viewer -->
+                <div class="flex flex-col bg-slate-900/50 p-4 rounded-xl border border-slate-800 xl:row-span-1 xl:col-span-1 h-[400px] xl:h-auto">
+                    <h2 class="text-sm font-semibold text-slate-300 mb-4 tracking-wider uppercase text-center">3D OKlch Space</h2>
+                    <div id="3d-container" class="flex-1 w-full bg-slate-900 rounded-lg shadow-inner border border-slate-700/50 overflow-hidden relative cursor-move"></div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Bottom Area: Palette Output -->
+    <footer class="min-h-[11.5rem] max-h-[38vh] bg-slate-900 border-t border-slate-800 px-5 py-3.5 shrink-0 z-20 flex flex-col gap-2.5">
+        <div id="palettes-list" class="flex-1 overflow-y-auto space-y-2.5 pr-1">
+            <!-- Palette rows will be generated here -->
+        </div>
+        <div class="flex justify-center pt-0.5 shrink-0">
+            <button id="add-palette-btn" class="py-1.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold tracking-wider uppercase rounded-lg border border-slate-700 transition-colors flex items-center gap-1.5 shadow-sm">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                <span>Add Row</span>
+            </button>
+        </div>
+    </footer>
+
+    <script>
+        /**
+         * OKlch Application State (Supports multiple independent palette rows)
+         */
+        function createDefaultPaletteConfig() {
+            return {
+                dark: { l: 0.2, c: 0.12, h: 260 },
+                mid: { l: 0.6, c: 0.35, h: 320 },
+                light: { l: 0.95, c: 0.08, h: 50 },
+                handles: {
+                    d_out: { l: 0.35, c: 0.2, h: 290 },
+                    m_in:  { l: 0.45, c: 0.3, h: 300 },
+                    m_out: { l: 0.75, c: 0.4, h: 340 },
+                    l_in:  { l: 0.8,  c: 0.2, h: 10 }
+                },
+                locked: { dark: false, mid: false, light: false },
+                steps: 9
+            };
+        }
+
+        function clonePaletteConfig(cfg) {
+            return {
+                dark: { ...cfg.dark },
+                mid: { ...cfg.mid },
+                light: { ...cfg.light },
+                handles: {
+                    d_out: { ...cfg.handles.d_out },
+                    m_in:  { ...cfg.handles.m_in },
+                    m_out: { ...cfg.handles.m_out },
+                    l_in:  { ...cfg.handles.l_in }
+                },
+                locked: { ...cfg.locked },
+                steps: cfg.steps
+            };
+        }
+
+        const appState = {
+            palettes: [createDefaultPaletteConfig()],
+            activeIndex: 0
+        };
+
+        // Active palette reference for sidebar, 2D SVG editors, and 3D viewer
+        let state = appState.palettes[0];
+
+        const keys = ['dark', 'mid', 'light'];
+        const MAX_C = 0.4;
+        let dragging = null;   // Reference to point being dragged
+        let dragSpace = null;  // 'LC' or 'HC' context of the drag event
+        let dragChanged = false;
+
+        // Background drag state
+        let bgDragging = false;
+        let bgDragSpace = null;
+        let bgStartLoc = null;
+        let bgStartState = null;
+        let bgPrevAngle = 0;
+        let bgCumDH = 0;
+        let lastBgMoveEvent = null;
+
+        // Single-step Undo / Redo snapshots
+        let undoSnapshot = null;
+        let redoSnapshot = null;
+        let pendingSnapshot = null;
+
+        function cloneState() {
+            return {
+                palettes: appState.palettes.map(clonePaletteConfig),
+                activeIndex: appState.activeIndex
+            };
+        }
+
+        function paletteConfigsEqual(a, b) {
+            if (!a || !b) return false;
+            if (a.steps !== b.steps) return false;
+            for (const k of keys) {
+                if (a.locked[k] !== b.locked[k]) return false;
+                if (Math.abs(a[k].l - b[k].l) > 1e-6 || Math.abs(a[k].c - b[k].c) > 1e-6 || Math.abs(a[k].h - b[k].h) > 1e-4) return false;
+            }
+            for (const hk of ['d_out', 'm_in', 'm_out', 'l_in']) {
+                if (Math.abs(a.handles[hk].l - b.handles[hk].l) > 1e-6 || Math.abs(a.handles[hk].c - b.handles[hk].c) > 1e-6 || Math.abs(a.handles[hk].h - b.handles[hk].h) > 1e-4) return false;
+            }
+            return true;
+        }
+
+        function statesEqual(a, b) {
+            if (!a || !b) return false;
+            if (a.activeIndex !== b.activeIndex) return false;
+            if (a.palettes.length !== b.palettes.length) return false;
+            for (let i = 0; i < a.palettes.length; i++) {
+                if (!paletteConfigsEqual(a.palettes[i], b.palettes[i])) return false;
+            }
+            return true;
+        }
+
+        function restoreState(snap) {
+            if (!snap || !snap.palettes || snap.palettes.length === 0) return;
+            appState.palettes = snap.palettes.map(clonePaletteConfig);
+            appState.activeIndex = Math.max(0, Math.min(snap.activeIndex, appState.palettes.length - 1));
+            state = appState.palettes[appState.activeIndex];
+            updateAll();
+        }
+
+        function updateUndoRedoButtons() {
+            const undoBtn = document.getElementById('undo-btn');
+            const redoBtn = document.getElementById('redo-btn');
+            if (undoBtn) undoBtn.disabled = !undoSnapshot;
+            if (redoBtn) redoBtn.disabled = !redoSnapshot;
+        }
+
+        // Capture state right before a continuous gesture (drag, typing, slider) begins
+        function beginPendingUndo() {
+            if (!pendingSnapshot) {
+                pendingSnapshot = cloneState();
+            }
+        }
+
+        // Commit captured state as the single undo step once gesture completes
+        function commitPendingUndo() {
+            if (pendingSnapshot && !statesEqual(pendingSnapshot, appState)) {
+                undoSnapshot = pendingSnapshot;
+                redoSnapshot = null;
+                updateUndoRedoButtons();
+            }
+            pendingSnapshot = null;
+        }
+
+        // Record a single-action change immediately (e.g. reflect button, lock toggle)
+        function recordImmediateUndo() {
+            undoSnapshot = cloneState();
+            redoSnapshot = null;
+            pendingSnapshot = null;
+            updateUndoRedoButtons();
+        }
+
+        function performUndo() {
+            if (!undoSnapshot) return;
+            const prev = undoSnapshot;
+            redoSnapshot = cloneState();
+            undoSnapshot = null;
+            pendingSnapshot = null;
+            restoreState(prev);
+            updateUndoRedoButtons();
+        }
+
+        function performRedo() {
+            if (!redoSnapshot) return;
+            const next = redoSnapshot;
+            undoSnapshot = cloneState();
+            redoSnapshot = null;
+            pendingSnapshot = null;
+            restoreState(next);
+            updateUndoRedoButtons();
+        }
+
+        /* --- 1. Math & Color Space Conversions --- */
+
+        // Ensure angle interpolates shortest distance
+        function shortAngleDist(a, b) {
+            let d = (b - a) % 360;
+            if (d > 180) d -= 360;
+            if (d < -180) d += 360;
+            return d;
+        }
+
+        // Cubic Bezier (1D)
+        function bezier3(p0, p1, p2, p3, t) {
+            return (1 - t)**3 * p0 + 3 * (1 - t)**2 * t * p1 + 3 * (1 - t) * t**2 * p2 + t**3 * p3;
+        }
+
+        // Color Conversion Functions (OKlch <-> OKlab -> Linear sRGB -> sRGB -> Hex)
+        function oklch_to_oklab(l, c, h) {
+            let h_rad = h * Math.PI / 180;
+            return { L: l, a: c * Math.cos(h_rad), b: c * Math.sin(h_rad) };
+        }
+
+        function oklab_to_oklch(L, a, b) {
+            let c = Math.sqrt(a * a + b * b);
+            let h = Math.atan2(b, a) * 180 / Math.PI;
+            if (h < 0) h += 360;
+            return { l: L, c: c, h: h };
+        }
+
+        // Evaluate segment 1 (Dark -> Mid) at parameter t [0, 1] using OKlab 3D cartesian coordinates
+        function getPointAtT1(t, cfg = state) {
+            let p0 = oklch_to_oklab(cfg.dark.l, cfg.dark.c, cfg.dark.h);
+            let p1 = oklch_to_oklab(cfg.handles.d_out.l, cfg.handles.d_out.c, cfg.handles.d_out.h);
+            let p2 = oklch_to_oklab(cfg.handles.m_in.l, cfg.handles.m_in.c, cfg.handles.m_in.h);
+            let p3 = oklch_to_oklab(cfg.mid.l, cfg.mid.c, cfg.mid.h);
+
+            let L = bezier3(p0.L, p1.L, p2.L, p3.L, t);
+            let a = bezier3(p0.a, p1.a, p2.a, p3.a, t);
+            let b = bezier3(p0.b, p1.b, p2.b, p3.b, t);
+
+            return oklab_to_oklch(L, a, b);
+        }
+
+        // Evaluate segment 2 (Mid -> Light) at parameter t [0, 1] using OKlab 3D cartesian coordinates
+        function getPointAtT2(t, cfg = state) {
+            let p0 = oklch_to_oklab(cfg.mid.l, cfg.mid.c, cfg.mid.h);
+            let p1 = oklch_to_oklab(cfg.handles.m_out.l, cfg.handles.m_out.c, cfg.handles.m_out.h);
+            let p2 = oklch_to_oklab(cfg.handles.l_in.l, cfg.handles.l_in.c, cfg.handles.l_in.h);
+            let p3 = oklch_to_oklab(cfg.light.l, cfg.light.c, cfg.light.h);
+
+            let L = bezier3(p0.L, p1.L, p2.L, p3.L, t);
+            let a = bezier3(p0.a, p1.a, p2.a, p3.a, t);
+            let b = bezier3(p0.b, p1.b, p2.b, p3.b, t);
+
+            return oklab_to_oklch(L, a, b);
+        }
+
+        // Euclidean distance in OKlab space
+        function dist(p1, p2) {
+            let lab1 = oklch_to_oklab(p1.l, p1.c, p1.h);
+            let lab2 = oklch_to_oklab(p2.l, p2.c, p2.h);
+            return Math.sqrt((lab2.L - lab1.L) ** 2 + (lab2.a - lab1.a) ** 2 + (lab2.b - lab1.b) ** 2);
+        }
+
+        function oklab_to_linear_srgb(L, a, b) {
+            let l_ = L + 0.3963377774 * a + 0.2158037573 * b;
+            let m_ = L - 0.1055613458 * a - 0.0638541728 * b;
+            let s_ = L - 0.0894841775 * a - 1.2914855480 * b;
+            let l = l_ ** 3, m = m_ ** 3, s = s_ ** 3;
+            return {
+                r: +4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+                g: -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+                b: -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s
+            };
+        }
+
+        function linear_srgb_to_srgb(c) {
+            let abs = Math.abs(c);
+            let val = abs > 0.0031308 ? 1.055 * Math.pow(abs, 1 / 2.4) - 0.055 : 12.92 * c;
+            return Math.sign(c) * val;
+        }
+
+        function oklch_to_hex(l, c, h) {
+            let lab = oklch_to_oklab(l, c, h);
+            let lin = oklab_to_linear_srgb(lab.L, lab.a, lab.b);
+            let r = Math.max(0, Math.min(1, linear_srgb_to_srgb(lin.r)));
+            let g = Math.max(0, Math.min(1, linear_srgb_to_srgb(lin.g)));
+            let b = Math.max(0, Math.min(1, linear_srgb_to_srgb(lin.b)));
+            let r_h = Math.round(r * 255).toString(16).padStart(2, '0');
+            let g_h = Math.round(g * 255).toString(16).padStart(2, '0');
+            let b_h = Math.round(b * 255).toString(16).padStart(2, '0');
+            return `#${r_h}${g_h}${b_h}`;
+        }
+
+        // sRGB Hex -> OKlch (For color picker input syncing)
+        function hex_to_srgb(hex) {
+            return {
+                r: parseInt(hex.substring(1, 3), 16) / 255,
+                g: parseInt(hex.substring(3, 5), 16) / 255,
+                b: parseInt(hex.substring(5, 7), 16) / 255
+            };
+        }
+
+        function srgb_to_linear(c) {
+            return c >= 0.04045 ? Math.pow((c + 0.055) / 1.055, 2.4) : c / 12.92;
+        }
+
+        function linear_srgb_to_oklab(r, g, b) {
+            let l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+            let m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+            let s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+            return {
+                L: 0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+                a: 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+                b: 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s
+            };
+        }
+
+        function hex_to_oklch(hex) {
+            let rgb = hex_to_srgb(hex);
+            let lr = srgb_to_linear(rgb.r), lg = srgb_to_linear(rgb.g), lb = srgb_to_linear(rgb.b);
+            let lab = linear_srgb_to_oklab(lr, lg, lb);
+            return oklab_to_oklch(lab.L, lab.a, lab.b);
+        }
+
+        /* --- 2. Curve Sampling & Palette Generation --- */
+
+        // Build data arrays of the curve by sampling evenly across parameter t
+        function buildCurveData(getPointFn) {
+            let pts = [];
+            let totalLen = 0;
+            let lastPt = getPointFn(0);
+            lastPt.c = Math.max(0, Math.min(MAX_C, lastPt.c));
+            pts.push({ t: 0, l: lastPt.l, c: lastPt.c, h: lastPt.h, len: 0 });
+            
+            const samples = 100;
+            for (let i = 1; i <= samples; i++) {
+                let t = i / samples;
+                let pt = getPointFn(t);
+                pt.c = Math.max(0, Math.min(MAX_C, pt.c));
+                totalLen += dist(lastPt, pt);
+                pts.push({ t, l: pt.l, c: pt.c, h: pt.h, len: totalLen });
+                lastPt = pt;
+            }
+            return { pts, totalLen };
+        }
+
+        // Fetch interpolated position at an exact length distance along the curve
+        function getPointAtLength(curveData, targetLen) {
+            if (targetLen <= 0) return curveData.pts[0];
+            if (targetLen >= curveData.totalLen) return curveData.pts[curveData.pts.length - 1];
+            
+            for (let i = 0; i < curveData.pts.length - 1; i++) {
+                let p1 = curveData.pts[i];
+                let p2 = curveData.pts[i + 1];
+                if (targetLen >= p1.len && targetLen <= p2.len) {
+                    let ratio = (targetLen - p1.len) / (p2.len - p1.len);
+                    return {
+                        l: p1.l + ratio * (p2.l - p1.l),
+                        c: p1.c + ratio * (p2.c - p1.c),
+                        h: p1.h + shortAngleDist(p1.h, p2.h) * ratio
+                    };
+                }
+            }
+        }
+
+        // Logic for dispersing the color stops evenly, pinning the middle swatch to Mid Color
+        function generatePalette(cfg = state) {
+            let n = cfg.steps;
+            if (n < 3) return [cfg.dark, cfg.light]; 
+
+            let d2m = buildCurveData(t => getPointAtT1(t, cfg));
+            let m2l = buildCurveData(t => getPointAtT2(t, cfg));
+            let L1 = d2m.totalLen;
+            let L2 = m2l.totalLen;
+            let totalLen = L1 + L2;
+
+            let idealStep = totalLen / (n - 1);
+            let midIndex = Math.round(L1 / idealStep);
+            
+            // Constrain midIndex bounds so we have stops on both sides
+            if (midIndex <= 0) midIndex = 1;
+            if (midIndex >= n - 1) midIndex = n - 2;
+
+            let palette = [];
+            
+            // Distribute D to M
+            for (let i = 0; i <= midIndex; i++) {
+                if (i === 0) palette.push(cfg.dark);
+                else if (i === midIndex) palette.push(cfg.mid);
+                else palette.push(getPointAtLength(d2m, (i / midIndex) * L1));
+            }
+            
+            // Distribute M to L
+            let remaining = n - 1 - midIndex;
+            for (let i = 1; i <= remaining; i++) {
+                if (i === remaining) palette.push(cfg.light);
+                else palette.push(getPointAtLength(m2l, (i / remaining) * L2));
+            }
+            return palette;
+        }
+
+
+        /* --- 3. DOM & UI Management --- */
+        
+        // Initial Sidebar Generation
+        function initSidebar() {
+            const container = document.getElementById('color-inputs-container');
+            const sections = [
+                { id: 'dark', label: 'Start Stop' },
+                { id: 'mid', label: 'Middle Stop' },
+                { id: 'light', label: 'End Stop' }
+            ];
+
+            sections.forEach(sec => {
+                const el = document.createElement('div');
+                el.className = 'bg-slate-950 p-4 rounded-lg border border-slate-800 shadow-sm transition-opacity duration-200';
+                el.id = `section-${sec.id}`;
+                
+                const lockSvgClosed = `<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" fill-rule="evenodd"></path></svg>`;
+                const lockSvgOpen = `<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a5 5 0 00-5 5v2a2 2 0 00-2 2v5a2 2 0 002 2h10a2 2 0 002-2v-5a2 2 0 00-2-2H7V7a3 3 0 015.905-.75 1 1 0 001.937-.5A5.002 5.002 0 0010 2z"></path></svg>`;
+
+                el.innerHTML = `
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-semibold text-slate-300">${sec.label}</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="flex items-center bg-slate-900 border border-slate-700 rounded overflow-hidden">
+                                <input type="color" id="hex-${sec.id}" class="w-8 h-8 p-0 border-0 bg-transparent cursor-pointer">
+                                <input type="text" id="text-${sec.id}" maxlength="7" spellcheck="false" class="w-20 bg-transparent text-xs text-center font-mono uppercase focus:outline-none focus:bg-slate-800 text-slate-300">
+                            </div>
+                            <button id="lock-${sec.id}" class="text-slate-500 hover:text-white transition-colors p-1" title="Toggle Lock">
+                                <span id="lock-icon-${sec.id}">${lockSvgOpen}</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <div class="flex items-center gap-3">
+                            <span class="w-3 text-xs text-slate-500">L</span>
+                            <input type="range" id="l-${sec.id}" min="0" max="1" step="0.01" class="w-full color-slider">
+                            <span id="val-l-${sec.id}" class="text-xs text-slate-400 w-8 text-right font-mono"></span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="w-3 text-xs text-slate-500">C</span>
+                            <input type="range" id="c-${sec.id}" min="0" max="0.4" step="0.005" class="w-full color-slider">
+                            <span id="val-c-${sec.id}" class="text-xs text-slate-400 w-8 text-right font-mono"></span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="w-3 text-xs text-slate-500">H</span>
+                            <input type="range" id="h-${sec.id}" min="0" max="360" step="1" class="w-full color-slider">
+                            <span id="val-h-${sec.id}" class="text-xs text-slate-400 w-8 text-right font-mono"></span>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(el);
+
+                // Bind lock toggle
+                document.getElementById(`lock-${sec.id}`).addEventListener('click', () => {
+                    recordImmediateUndo();
+                    state.locked[sec.id] = !state.locked[sec.id];
+                    updateAll();
+                });
+            });
+
+            // Bind Events
+            keys.forEach(k => {
+                ['l', 'c', 'h'].forEach(prop => {
+                    const slider = document.getElementById(`${prop}-${k}`);
+                    slider.addEventListener('mousedown', () => { if (!state.locked[k]) beginPendingUndo(); });
+                    slider.addEventListener('touchstart', () => { if (!state.locked[k]) beginPendingUndo(); }, { passive: true });
+                    slider.addEventListener('keydown', () => { if (!state.locked[k]) beginPendingUndo(); });
+                    slider.addEventListener('input', (e) => {
+                        if (state.locked[k]) return;
+                        beginPendingUndo();
+                        state[k][prop] = parseFloat(e.target.value);
+                        updateAll();
+                    });
+                    slider.addEventListener('change', () => commitPendingUndo());
+                    slider.addEventListener('mouseup', () => commitPendingUndo());
+                    slider.addEventListener('touchend', () => commitPendingUndo());
+                    slider.addEventListener('keyup', () => commitPendingUndo());
+                });
+
+                const colorInput = document.getElementById(`hex-${k}`);
+                colorInput.addEventListener('focus', () => { if (!state.locked[k]) beginPendingUndo(); });
+                colorInput.addEventListener('click', () => { if (!state.locked[k]) beginPendingUndo(); });
+                colorInput.addEventListener('input', (e) => {
+                    if (state.locked[k]) return;
+                    beginPendingUndo();
+                    let parsed = hex_to_oklch(e.target.value);
+                    state[k].l = parsed.l; state[k].c = parsed.c; state[k].h = parsed.h;
+                    updateAll();
+                });
+                colorInput.addEventListener('change', () => commitPendingUndo());
+                colorInput.addEventListener('blur', () => commitPendingUndo());
+
+                // Editable Hex text input: updates preview on valid 6-digit hex, commits single undo on submit
+                const textInput = document.getElementById(`text-${k}`);
+                textInput.addEventListener('focus', (e) => {
+                    if (state.locked[k]) return;
+                    beginPendingUndo();
+                    e.target.select();
+                });
+                textInput.addEventListener('input', (e) => {
+                    if (state.locked[k]) return;
+                    const raw = e.target.value.trim();
+                    if (/^#?[0-9a-fA-F]{6}$/.test(raw)) {
+                        const normalized = raw.startsWith('#') ? raw : `#${raw}`;
+                        const parsed = hex_to_oklch(normalized);
+                        state[k].l = parsed.l;
+                        state[k].c = parsed.c;
+                        state[k].h = parsed.h;
+                        updateAll(`text-${k}`);
+                    }
+                });
+                textInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        e.target.blur();
+                    } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        if (pendingSnapshot) {
+                            restoreState(pendingSnapshot);
+                            pendingSnapshot = null;
+                        }
+                        e.target.blur();
+                    }
+                });
+                textInput.addEventListener('blur', () => {
+                    commitPendingUndo();
+                    syncSidebar();
+                });
+            });
+
+            const stepsRange = document.getElementById('steps');
+            const stepsNum = document.getElementById('steps-num');
+            
+            stepsRange.addEventListener('mousedown', () => beginPendingUndo());
+            stepsRange.addEventListener('touchstart', () => beginPendingUndo(), { passive: true });
+            stepsRange.addEventListener('input', (e) => {
+                beginPendingUndo();
+                state.steps = parseInt(e.target.value);
+                stepsNum.value = state.steps;
+                updateAll();
+            });
+            stepsRange.addEventListener('change', () => commitPendingUndo());
+            stepsRange.addEventListener('mouseup', () => commitPendingUndo());
+            stepsRange.addEventListener('touchend', () => commitPendingUndo());
+
+            stepsNum.addEventListener('focus', () => beginPendingUndo());
+            stepsNum.addEventListener('input', (e) => {
+                beginPendingUndo();
+                let v = parseInt(e.target.value);
+                if(isNaN(v) || v < 3) v = 3;
+                if(v > 256) v = 256;
+                state.steps = v;
+                stepsRange.value = v;
+                updateAll();
+            });
+            stepsNum.addEventListener('change', () => commitPendingUndo());
+            stepsNum.addEventListener('blur', () => commitPendingUndo());
+
+            document.getElementById('export-clrs-btn').addEventListener('click', exportInfinitePainterClrs);
+
+            // Undo / Redo buttons & keyboard shortcuts
+            document.getElementById('undo-btn').addEventListener('click', performUndo);
+            document.getElementById('redo-btn').addEventListener('click', performRedo);
+            window.addEventListener('keydown', (e) => {
+                const tag = document.activeElement?.tagName;
+                if (tag === 'INPUT' && (document.activeElement.type === 'text' || document.activeElement.type === 'number')) {
+                    return;
+                }
+                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+                    e.preventDefault();
+                    if (e.shiftKey) performRedo();
+                    else performUndo();
+                } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+                    e.preventDefault();
+                    performRedo();
+                }
+            });
+
+            // Reflection / Inversion buttons
+            function getAllNodes() {
+                return [
+                    state.dark, state.mid, state.light,
+                    state.handles.d_out, state.handles.m_in, state.handles.m_out, state.handles.l_in
+                ];
+            }
+
+            document.getElementById('reflect-lc-l').addEventListener('click', () => {
+                recordImmediateUndo();
+                getAllNodes().forEach(p => {
+                    p.l = Math.max(0, Math.min(1, 1 - p.l));
+                });
+                updateAll();
+            });
+
+            document.getElementById('reflect-lc-c').addEventListener('click', () => {
+                recordImmediateUndo();
+                getAllNodes().forEach(p => {
+                    p.c = Math.max(0, Math.min(MAX_C, 0.4 - p.c));
+                });
+                updateAll();
+            });
+
+            document.getElementById('reflect-hc-h').addEventListener('click', () => {
+                recordImmediateUndo();
+                getAllNodes().forEach(p => {
+                    p.h = ((360 - p.h) % 360 + 360) % 360;
+                });
+                updateAll();
+            });
+
+            document.getElementById('reflect-hc-c').addEventListener('click', () => {
+                recordImmediateUndo();
+                getAllNodes().forEach(p => {
+                    p.c = Math.max(0, Math.min(MAX_C, 0.4 - p.c));
+                });
+                updateAll();
+            });
+
+            // Add new palette row (clones the previous row and selects the newly added row)
+            document.getElementById('add-palette-btn').addEventListener('click', () => {
+                recordImmediateUndo();
+                const prevRow = appState.palettes[appState.palettes.length - 1];
+                const newRow = clonePaletteConfig(prevRow);
+                appState.palettes.push(newRow);
+                appState.activeIndex = appState.palettes.length - 1;
+                state = appState.palettes[appState.activeIndex];
+                updateAll();
+                const listEl = document.getElementById('palettes-list');
+                if (listEl) listEl.scrollTop = listEl.scrollHeight;
+            });
+        }
+
+        function selectPaletteRow(index) {
+            if (index < 0 || index >= appState.palettes.length || index === appState.activeIndex) return;
+            recordImmediateUndo();
+            appState.activeIndex = index;
+            state = appState.palettes[appState.activeIndex];
+            updateAll();
+        }
+
+        function deletePaletteRow(index) {
+            if (index <= 0 || index >= appState.palettes.length) return;
+            recordImmediateUndo();
+            appState.palettes.splice(index, 1);
+            if (appState.activeIndex >= appState.palettes.length) {
+                appState.activeIndex = appState.palettes.length - 1;
+            } else if (index < appState.activeIndex) {
+                appState.activeIndex -= 1;
+            }
+            state = appState.palettes[appState.activeIndex];
+            updateAll();
+        }
+
+        // Export all palette rows together into a single Infinite Painter .clrs JSON file
+        function exportInfinitePainterClrs() {
+            const colors = [];
+            appState.palettes.forEach(cfg => {
+                const palette = generatePalette(cfg);
+                palette.forEach(p => {
+                    const hex = oklch_to_hex(p.l, p.c, p.h);
+                    const r = parseInt(hex.substring(1, 3), 16);
+                    const g = parseInt(hex.substring(3, 5), 16);
+                    const b = parseInt(hex.substring(5, 7), 16);
+                    colors.push(((0xFF << 24) | (r << 16) | (g << 8) | b) >> 0);
+                });
+            });
+
+            const payload = JSON.stringify({
+                name: "OKlch Palette",
+                colors: colors
+            }, null, 2);
+
+            const blob = new Blob([payload], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `oklch_palette_${appState.palettes.length}rows_${colors.length}.clrs`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Sync Sidebar UI components based on internal state
+        function syncSidebar(skipTextId = null) {
+            const lockSvgClosed = `<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" fill-rule="evenodd"></path></svg>`;
+            const lockSvgOpen = `<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a5 5 0 00-5 5v2a2 2 0 00-2 2v5a2 2 0 002 2h10a2 2 0 002-2v-5a2 2 0 00-2-2H7V7a3 3 0 015.905-.75 1 1 0 001.937-.5A5.002 5.002 0 0010 2z"></path></svg>`;
+
+            keys.forEach(k => {
+                document.getElementById(`l-${k}`).value = state[k].l;
+                document.getElementById(`c-${k}`).value = state[k].c;
+                document.getElementById(`h-${k}`).value = state[k].h;
+                
+                document.getElementById(`val-l-${k}`).innerText = state[k].l.toFixed(2);
+                document.getElementById(`val-c-${k}`).innerText = state[k].c.toFixed(3);
+                document.getElementById(`val-h-${k}`).innerText = Math.round(state[k].h);
+                
+                let hex = oklch_to_hex(state[k].l, state[k].c, state[k].h);
+                document.getElementById(`hex-${k}`).value = hex;
+                if (skipTextId !== `text-${k}`) {
+                    document.getElementById(`text-${k}`).value = hex;
+                }
+                
+                // Handle Locks UI
+                let isLocked = state.locked[k];
+                document.getElementById(`lock-icon-${k}`).innerHTML = isLocked ? lockSvgClosed : lockSvgOpen;
+                document.getElementById(`lock-${k}`).className = isLocked ? "text-white transition-colors p-1" : "text-slate-500 hover:text-white transition-colors p-1";
+                document.getElementById(`section-${k}`).style.opacity = isLocked ? "0.6" : "1";
+                
+                ['l', 'c', 'h', 'hex', 'text'].forEach(prop => {
+                    document.getElementById(`${prop}-${k}`).disabled = isLocked;
+                });
+
+                // Dynamic slider backgrounds
+                document.getElementById(`l-${k}`).style.background = `linear-gradient(to right, oklch(0 ${state[k].c} ${state[k].h}), oklch(1 ${state[k].c} ${state[k].h}))`;
+                document.getElementById(`c-${k}`).style.background = `linear-gradient(to right, oklch(${state[k].l} 0 ${state[k].h}), oklch(${state[k].l} ${MAX_C} ${state[k].h}))`;
+                
+                let hGrad = [];
+                for(let i=0; i<=6; i++) {
+                    hGrad.push(`oklch(${state[k].l} ${state[k].c} ${i*60})`);
+                }
+                document.getElementById(`h-${k}`).style.background = `linear-gradient(to right, ${hGrad.join(', ')})`;
+            });
+            document.getElementById('steps').value = state.steps;
+            document.getElementById('steps-num').value = state.steps;
+        }
+
+        // Coordinates Mapping to SVG dimensions (300x300 canvas)
+        const S = 300, H = 150;
+        function mapLC_X(c) { return (c / MAX_C) * S; }
+        function mapLC_Y(l) { return (1 - l) * S; } // Y inverted
+        function mapHC_X(c, h) { return H + (c / MAX_C) * H * Math.cos(h * Math.PI / 180); }
+        function mapHC_Y(c, h) { return H - (c / MAX_C) * H * Math.sin(h * Math.PI / 180); }
+
+        function drawGrids() {
+            // L-C Grid
+            let gridLC = `<g stroke="#334155" stroke-width="1" stroke-dasharray="2">`;
+            for(let i=0; i<=4; i++) {
+                gridLC += `<line x1="${(i/4)*S}" y1="0" x2="${(i/4)*S}" y2="${S}" />`;
+                gridLC += `<line x1="0" y1="${(i/4)*S}" x2="${S}" y2="${(i/4)*S}" />`;
+            }
+            gridLC += `</g>`;
+            document.getElementById('lc-grid').innerHTML = gridLC;
+
+            // H-C Grid
+            let gridHC = `<g stroke="#334155" stroke-width="1" stroke-dasharray="2">`;
+            for(let i=1; i<=4; i++) {
+                gridHC += `<circle cx="${H}" cy="${H}" r="${(i/4)*H}" fill="none" />`;
+            }
+            for(let i=0; i<8; i++) {
+                let a = (i/8) * 2 * Math.PI;
+                gridHC += `<line x1="${H}" y1="${H}" x2="${H + H*Math.cos(a)}" y2="${H - H*Math.sin(a)}" />`;
+            }
+            gridHC += `</g>`;
+            document.getElementById('hc-grid').innerHTML = gridHC;
+        }
+
+        function initHCBackground() {
+            // HC Background - Radial distance = chroma, Angle = Hue (Lightness locked at 0.5)
+            // Rendered only once since it doesn't depend on dynamically changing parameters
+            const hcCtx = document.getElementById('bg-hc').getContext('2d');
+            const hcImg = hcCtx.createImageData(300, 300);
+            for (let y = 0; y < 300; y++) {
+                for (let x = 0; x < 300; x++) {
+                    let dx = x - 150;
+                    let dy = 150 - y;
+                    let r = Math.sqrt(dx*dx + dy*dy);
+                    if (r > 150) continue;
+                    let a = Math.atan2(dy, dx) * 180 / Math.PI;
+                    if (a < 0) a += 360;
+                    let c = (r / 150) * MAX_C;
+                    let hex = oklch_to_hex(0.5, c, a);
+                    let rgb = hex_to_srgb(hex);
+                    let idx = (y * 300 + x) * 4;
+                    hcImg.data[idx] = rgb.r * 255;
+                    hcImg.data[idx+1] = rgb.g * 255;
+                    hcImg.data[idx+2] = rgb.b * 255;
+                    hcImg.data[idx+3] = 70; // Transparent to keep grids visible
+                }
+            }
+            hcCtx.putImageData(hcImg, 0, 0);
+        }
+
+        let cachedMidHue = null;
+        function renderLCBackground() {
+            // LC Background - Lightness changes vertically, hue syncs with middle stop
+            // We cache it so we only re-run the pixel loop if the hue genuinely changed during dragging
+            if (cachedMidHue === state.mid.h) return;
+            cachedMidHue = state.mid.h;
+
+            const lcCtx = document.getElementById('bg-lc').getContext('2d');
+            const lcImg = lcCtx.createImageData(300, 300);
+            let midH = state.mid.h;
+            
+            for (let y = 0; y < 300; y++) {
+                for (let x = 0; x < 300; x++) {
+                    let l = 1 - (y / 300);
+                    let c = (x / 300) * MAX_C;
+                    let hex = oklch_to_hex(l, c, midH);
+                    let rgb = hex_to_srgb(hex);
+                    let idx = (y * 300 + x) * 4;
+                    lcImg.data[idx] = rgb.r * 255;
+                    lcImg.data[idx+1] = rgb.g * 255;
+                    lcImg.data[idx+2] = rgb.b * 255;
+                    lcImg.data[idx+3] = 70; // Transparent to keep grids visible
+                }
+            }
+            lcCtx.putImageData(lcImg, 0, 0);
+        }
+
+        function setLine(id, x1, y1, x2, y2) {
+            let el = document.getElementById(id);
+            el.setAttribute('x1', x1); el.setAttribute('y1', y1);
+            el.setAttribute('x2', x2); el.setAttribute('y2', y2);
+        }
+
+        function setPt(id, x, y) {
+            let el = document.getElementById(id);
+            el.setAttribute('cx', x); el.setAttribute('cy', y);
+        }
+
+        function getPolyline(pts, mapX, mapY) {
+            return pts.reduce((acc, p, i) => acc + (i === 0 ? "M " : "L ") + `${mapX(p)} ${mapY(p)} `, "");
+        }
+
+        function updateSVGs() {
+            let d2m = buildCurveData(getPointAtT1).pts;
+            let m2l = buildCurveData(getPointAtT2).pts;
+
+            // L-C Paths - now perfectly following the OKlab evaluated points
+            document.getElementById('lc-curve-1').setAttribute('d', getPolyline(d2m, p => mapLC_X(p.c), p => mapLC_Y(p.l)));
+            document.getElementById('lc-curve-2').setAttribute('d', getPolyline(m2l, p => mapLC_X(p.c), p => mapLC_Y(p.l)));
+
+            // H-C Paths 
+            document.getElementById('hc-curve-1').setAttribute('d', getPolyline(d2m, p => mapHC_X(p.c, p.h), p => mapHC_Y(p.c, p.h)));
+            document.getElementById('hc-curve-2').setAttribute('d', getPolyline(m2l, p => mapHC_X(p.c, p.h), p => mapHC_Y(p.c, p.h)));
+
+            // Handles LC
+            setLine('lc-h1-line', mapLC_X(state.dark.c), mapLC_Y(state.dark.l), mapLC_X(state.handles.d_out.c), mapLC_Y(state.handles.d_out.l));
+            setLine('lc-h2-line', mapLC_X(state.handles.m_in.c), mapLC_Y(state.handles.m_in.l), mapLC_X(state.mid.c), mapLC_Y(state.mid.l));
+            setLine('lc-h3-line', mapLC_X(state.mid.c), mapLC_Y(state.mid.l), mapLC_X(state.handles.m_out.c), mapLC_Y(state.handles.m_out.l));
+            setLine('lc-h4-line', mapLC_X(state.handles.l_in.c), mapLC_Y(state.handles.l_in.l), mapLC_X(state.light.c), mapLC_Y(state.light.l));
+
+            // Handles HC
+            setLine('hc-h1-line', mapHC_X(state.dark.c, state.dark.h), mapHC_Y(state.dark.c, state.dark.h), mapHC_X(state.handles.d_out.c, state.handles.d_out.h), mapHC_Y(state.handles.d_out.c, state.handles.d_out.h));
+            setLine('hc-h2-line', mapHC_X(state.handles.m_in.c, state.handles.m_in.h), mapHC_Y(state.handles.m_in.c, state.handles.m_in.h), mapHC_X(state.mid.c, state.mid.h), mapHC_Y(state.mid.c, state.mid.h));
+            setLine('hc-h3-line', mapHC_X(state.mid.c, state.mid.h), mapHC_Y(state.mid.c, state.mid.h), mapHC_X(state.handles.m_out.c, state.handles.m_out.h), mapHC_Y(state.handles.m_out.c, state.handles.m_out.h));
+            setLine('hc-h4-line', mapHC_X(state.handles.l_in.c, state.handles.l_in.h), mapHC_Y(state.handles.l_in.c, state.handles.l_in.h), mapHC_X(state.light.c, state.light.h), mapHC_Y(state.light.c, state.light.h));
+
+            // Nodes LC
+            setPt('lc-d', mapLC_X(state.dark.c), mapLC_Y(state.dark.l));
+            setPt('lc-m', mapLC_X(state.mid.c), mapLC_Y(state.mid.l));
+            setPt('lc-l', mapLC_X(state.light.c), mapLC_Y(state.light.l));
+            setPt('lc-h-d-out', mapLC_X(state.handles.d_out.c), mapLC_Y(state.handles.d_out.l));
+            setPt('lc-h-m-in', mapLC_X(state.handles.m_in.c), mapLC_Y(state.handles.m_in.l));
+            setPt('lc-h-m-out', mapLC_X(state.handles.m_out.c), mapLC_Y(state.handles.m_out.l));
+            setPt('lc-h-l-in', mapLC_X(state.handles.l_in.c), mapLC_Y(state.handles.l_in.l));
+
+            // Nodes HC
+            setPt('hc-d', mapHC_X(state.dark.c, state.dark.h), mapHC_Y(state.dark.c, state.dark.h));
+            setPt('hc-m', mapHC_X(state.mid.c, state.mid.h), mapHC_Y(state.mid.c, state.mid.h));
+            setPt('hc-l', mapHC_X(state.light.c, state.light.h), mapHC_Y(state.light.c, state.light.h));
+            setPt('hc-h-d-out', mapHC_X(state.handles.d_out.c, state.handles.d_out.h), mapHC_Y(state.handles.d_out.c, state.handles.d_out.h));
+            setPt('hc-h-m-in', mapHC_X(state.handles.m_in.c, state.handles.m_in.h), mapHC_Y(state.handles.m_in.c, state.handles.m_in.h));
+            setPt('hc-h-m-out', mapHC_X(state.handles.m_out.c, state.handles.m_out.h), mapHC_Y(state.handles.m_out.c, state.handles.m_out.h));
+            setPt('hc-h-l-in', mapHC_X(state.handles.l_in.c, state.handles.l_in.h), mapHC_Y(state.handles.l_in.c, state.handles.l_in.h));
+
+            // Inner Nodes Colors
+            ['d', 'm', 'l'].forEach(k => {
+                let pt = state[k === 'd' ? 'dark' : (k === 'm' ? 'mid' : 'light')];
+                let hex = oklch_to_hex(pt.l, pt.c, pt.h);
+                document.getElementById(`lc-${k}-inner`).style.color = hex;
+                document.getElementById(`hc-${k}-inner`).style.color = hex;
+                setPt(`lc-${k}-inner`, mapLC_X(pt.c), mapLC_Y(pt.l));
+                setPt(`hc-${k}-inner`, mapHC_X(pt.c, pt.h), mapHC_Y(pt.c, pt.h));
+            });
+        }
+
+        // Mouse Handlers for SVG dragging
+        function initInteractions() {
+            const svgLC = document.getElementById('svg-lc');
+            const svgHC = document.getElementById('svg-hc');
+            
+            function register(id, space, targetType, targetKey) {
+                document.getElementById(id).addEventListener('mousedown', (e) => {
+                    e.stopPropagation();
+                    let k = targetType === 'point' ? targetKey : null;
+                    if (k && state.locked[k]) return; // Block drag if locked
+                    
+                    dragging = { type: targetType, key: targetKey };
+                    dragSpace = space;
+                    dragChanged = false;
+                    beginPendingUndo();
+                });
+                document.getElementById(id).addEventListener('touchstart', (e) => {
+                    e.stopPropagation();
+                    let k = targetType === 'point' ? targetKey : null;
+                    if (k && state.locked[k]) return;
+                    
+                    dragging = { type: targetType, key: targetKey };
+                    dragSpace = space;
+                    dragChanged = false;
+                    beginPendingUndo();
+                }, {passive: true});
+            }
+
+            // Register points
+            register('lc-d', 'LC', 'point', 'dark');
+            register('lc-m', 'LC', 'point', 'mid');
+            register('lc-l', 'LC', 'point', 'light');
+            register('hc-d', 'HC', 'point', 'dark');
+            register('hc-m', 'HC', 'point', 'mid');
+            register('hc-l', 'HC', 'point', 'light');
+
+            // Register handles
+            register('lc-h-d-out', 'LC', 'handle', 'd_out');
+            register('lc-h-m-in',  'LC', 'handle', 'm_in');
+            register('lc-h-m-out', 'LC', 'handle', 'm_out');
+            register('lc-h-l-in',  'LC', 'handle', 'l_in');
+            register('hc-h-d-out', 'HC', 'handle', 'd_out');
+            register('hc-h-m-in',  'HC', 'handle', 'm_in');
+            register('hc-h-m-out', 'HC', 'handle', 'm_out');
+            register('hc-h-l-in',  'HC', 'handle', 'l_in');
+
+            function getMouseCoords(e, svg) {
+                let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                let clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                let pt = svg.createSVGPoint();
+                pt.x = clientX; pt.y = clientY;
+                return pt.matrixTransform(svg.getScreenCTM().inverse());
+            }
+
+            // Register SVG background dragging for global stop/handle translation
+            function registerBackgroundDrag(svg, space) {
+                function startBgDrag(e) {
+                    if (e.target && e.target.classList && e.target.classList.contains('point')) return;
+                    bgDragging = true;
+                    bgDragSpace = space;
+                    bgStartLoc = getMouseCoords(e, svg);
+                    bgStartState = clonePaletteConfig(state);
+                    dragChanged = false;
+                    beginPendingUndo();
+                    svg.classList.add('is-panning');
+
+                    if (space === 'HC') {
+                        const dx0 = bgStartLoc.x - H;
+                        const dy0 = H - bgStartLoc.y;
+                        bgPrevAngle = Math.atan2(dy0, dx0) * 180 / Math.PI;
+                        bgCumDH = 0;
+                    }
+                }
+                svg.addEventListener('mousedown', startBgDrag);
+                svg.addEventListener('touchstart', startBgDrag, { passive: true });
+            }
+
+            registerBackgroundDrag(svgLC, 'LC');
+            registerBackgroundDrag(svgHC, 'HC');
+
+            function applyBackgroundDrag(loc, shiftPressed) {
+                if (!bgDragging || !bgStartState) return;
+                dragChanged = true;
+
+                if (bgDragSpace === 'LC') {
+                    let dx = loc.x - bgStartLoc.x;
+                    let dy = loc.y - bgStartLoc.y;
+
+                    if (shiftPressed) {
+                        if (Math.abs(dx) >= Math.abs(dy)) dy = 0;
+                        else dx = 0;
+                    }
+
+                    const dC = (dx / S) * MAX_C;
+                    const dL = -(dy / S);
+
+                    keys.forEach(k => {
+                        if (!bgStartState.locked[k]) {
+                            state[k].l = Math.max(0, Math.min(1, bgStartState[k].l + dL));
+                            state[k].c = Math.max(0, Math.min(MAX_C, bgStartState[k].c + dC));
+                        }
+                    });
+
+                    ['d_out', 'm_in', 'm_out', 'l_in'].forEach(hk => {
+                        state.handles[hk].l = Math.max(0, Math.min(1, bgStartState.handles[hk].l + dL));
+                        state.handles[hk].c = Math.max(0, Math.min(MAX_C, bgStartState.handles[hk].c + dC));
+                    });
+                } else {
+                    const dx0 = bgStartLoc.x - H;
+                    const dy0 = H - bgStartLoc.y;
+                    const r0 = Math.sqrt(dx0 * dx0 + dy0 * dy0);
+
+                    const dx1 = loc.x - H;
+                    const dy1 = H - loc.y;
+                    const r1 = Math.sqrt(dx1 * dx1 + dy1 * dy1);
+                    const a1 = Math.atan2(dy1, dx1) * 180 / Math.PI;
+
+                    bgCumDH += shortAngleDist(bgPrevAngle, a1);
+                    bgPrevAngle = a1;
+
+                    let dr = r1 - r0;
+                    let dH = bgCumDH;
+
+                    if (shiftPressed) {
+                        const radialDist = Math.abs(dr);
+                        const rRef = Math.max(20, (r0 + r1) / 2);
+                        const angularDist = rRef * Math.abs(dH * Math.PI / 180);
+                        if (radialDist >= angularDist) dH = 0;
+                        else dr = 0;
+                    }
+
+                    const dC = (dr / H) * MAX_C;
+
+                    keys.forEach(k => {
+                        if (!bgStartState.locked[k]) {
+                            state[k].c = Math.max(0, Math.min(MAX_C, bgStartState[k].c + dC));
+                            state[k].h = ((bgStartState[k].h + dH) % 360 + 360) % 360;
+                        }
+                    });
+
+                    ['d_out', 'm_in', 'm_out', 'l_in'].forEach(hk => {
+                        state.handles[hk].c = Math.max(0, Math.min(MAX_C, bgStartState.handles[hk].c + dC));
+                        state.handles[hk].h = ((bgStartState.handles[hk].h + dH) % 360 + 360) % 360;
+                    });
+                }
+
+                updateAll();
+            }
+
+            // Helpers to map handles back and forth to OKlab coordinate space
+            function toLab(p) {
+                let hRad = p.h * Math.PI / 180;
+                return { L: p.l, a: p.c * Math.cos(hRad), b: p.c * Math.sin(hRad) };
+            }
+            function toLch(L, a, b) {
+                let c = Math.sqrt(a * a + b * b);
+                let h = Math.atan2(b, a) * 180 / Math.PI;
+                if (h < 0) h += 360;
+                return { l: Math.max(0, Math.min(1, L)), c: Math.max(0, Math.min(MAX_C, c)), h: h };
+            }
+
+            function handleMove(e) {
+                if (bgDragging) {
+                    const svg = bgDragSpace === 'LC' ? svgLC : svgHC;
+                    const loc = getMouseCoords(e, svg);
+                    lastBgMoveEvent = { loc, shiftKey: !!e.shiftKey };
+                    applyBackgroundDrag(loc, !!e.shiftKey);
+                    return;
+                }
+                if (!dragging) return;
+                dragChanged = true;
+                let svg = dragSpace === 'LC' ? svgLC : svgHC;
+                let loc = getMouseCoords(e, svg);
+                
+                let targetObj = dragging.type === 'point' ? state[dragging.key] : state.handles[dragging.key];
+
+                let old_m_lab = null;
+                if (dragging.key === 'mid' && dragging.type === 'point') {
+                    old_m_lab = oklch_to_oklab(state.mid.l, state.mid.c, state.mid.h);
+                }
+
+                if (dragSpace === 'LC') {
+                    let c = (loc.x / S) * MAX_C;
+                    let l = 1 - (loc.y / S);
+                    targetObj.c = Math.max(0, Math.min(MAX_C, c));
+                    targetObj.l = Math.max(0, Math.min(1, l));
+                } else {
+                    let dx = loc.x - H;
+                    let dy = H - loc.y; // Un-invert Y for trig
+                    let r = Math.sqrt(dx*dx + dy*dy);
+                    let a = Math.atan2(dy, dx) * 180 / Math.PI;
+                    if (a < 0) a += 360;
+                    
+                    targetObj.c = Math.max(0, Math.min(MAX_C, (r / H) * MAX_C));
+                    targetObj.h = a;
+                }
+
+                // If moving Mid, cleanly shift its handles using OKlab Cartesian space
+                if (old_m_lab) {
+                    let new_m_lab = oklch_to_oklab(state.mid.l, state.mid.c, state.mid.h);
+                    let dL = new_m_lab.L - old_m_lab.L;
+                    let da = new_m_lab.a - old_m_lab.a;
+                    let db = new_m_lab.b - old_m_lab.b;
+
+                    ['m_in', 'm_out'].forEach(hk => {
+                        let hndl = state.handles[hk];
+                        let labH = oklch_to_oklab(hndl.l, hndl.c, hndl.h);
+                        let newLch = oklab_to_oklch(labH.L + dL, labH.a + da, labH.b + db);
+                        hndl.l = Math.max(0, Math.min(1, newLch.l));
+                        hndl.c = Math.max(0, Math.min(MAX_C, newLch.c));
+                        hndl.h = newLch.h;
+                    });
+                }
+
+                // Sync collinear mid handles identically to maintain C1 continuity in OKlab space (different lengths allowed)
+                if (dragging.key === 'm_in' || dragging.key === 'm_out') {
+                    let masterKey = dragging.key;
+                    let syncKey = masterKey === 'm_in' ? 'm_out' : 'm_in';
+                    
+                    let pMaster = state.handles[masterKey];
+                    let pSync = state.handles[syncKey];
+                    
+                    let labM = oklch_to_oklab(state.mid.l, state.mid.c, state.mid.h);
+                    let labMaster = oklch_to_oklab(pMaster.l, pMaster.c, pMaster.h);
+                    let labSync = oklch_to_oklab(pSync.l, pSync.c, pSync.h);
+
+                    // Compute vector from Mid to Master and Mid to Sync
+                    let vMaster = { L: labMaster.L - labM.L, a: labMaster.a - labM.a, b: labMaster.b - labM.b };
+                    let vSync = { L: labSync.L - labM.L, a: labSync.a - labM.a, b: labSync.b - labM.b };
+
+                    let lenMaster = Math.sqrt(vMaster.L**2 + vMaster.a**2 + vMaster.b**2);
+                    let lenSync = Math.sqrt(vSync.L**2 + vSync.a**2 + vSync.b**2);
+
+                    if (lenMaster > 0) {
+                        let k = lenSync / lenMaster;
+                        let newL = labM.L - vMaster.L * k;
+                        let newA = labM.a - vMaster.a * k;
+                        let newB = labM.b - vMaster.b * k;
+
+                        let newLch = oklab_to_oklch(newL, newA, newB);
+                        pSync.l = Math.max(0, Math.min(1, newLch.l));
+                        pSync.c = Math.max(0, Math.min(MAX_C, newLch.c));
+                        pSync.h = newLch.h;
+                    }
+                }
+
+                updateAll();
+            }
+
+            function finishDrag() {
+                if (dragging || bgDragging) {
+                    if (dragChanged) {
+                        commitPendingUndo();
+                    } else {
+                        pendingSnapshot = null;
+                    }
+                }
+                dragging = null;
+                bgDragging = false;
+                bgDragSpace = null;
+                bgStartLoc = null;
+                bgStartState = null;
+                lastBgMoveEvent = null;
+                svgLC.classList.remove('is-panning');
+                svgHC.classList.remove('is-panning');
+            }
+
+            window.addEventListener('mousemove', handleMove);
+            window.addEventListener('touchmove', handleMove, { passive: true });
+            window.addEventListener('mouseup', finishDrag);
+            window.addEventListener('touchend', finishDrag);
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'Shift' && bgDragging && lastBgMoveEvent) {
+                    applyBackgroundDrag(lastBgMoveEvent.loc, true);
+                }
+            });
+            window.addEventListener('keyup', (e) => {
+                if (e.key === 'Shift' && bgDragging && lastBgMoveEvent) {
+                    applyBackgroundDrag(lastBgMoveEvent.loc, false);
+                }
+            });
+        }
+
+        // Render all palette rows in the footer
+        function renderAllPaletteRows(activePalette) {
+            const listContainer = document.getElementById('palettes-list');
+            listContainer.innerHTML = '';
+
+            appState.palettes.forEach((cfg, rowIndex) => {
+                const isSelected = rowIndex === appState.activeIndex;
+                const palette = isSelected ? activePalette : generatePalette(cfg);
+
+                const rowEl = document.createElement('div');
+                rowEl.className = `flex items-center gap-3 p-2.5 rounded-xl border transition-all cursor-pointer ${
+                    isSelected
+                        ? 'bg-slate-800/80 border-blue-400/70 ring-1 ring-blue-400/30 shadow-md'
+                        : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 hover:bg-slate-800/40 opacity-85 hover:opacity-100'
+                }`;
+                rowEl.addEventListener('click', () => selectPaletteRow(rowIndex));
+
+                // Left Row Indicator
+                const badgeEl = document.createElement('div');
+                badgeEl.className = `flex flex-col items-center justify-center shrink-0 w-10 py-1 rounded-lg border text-[10px] font-mono font-bold ${
+                    isSelected
+                        ? 'bg-blue-500/20 border-blue-400/50 text-blue-300'
+                        : 'bg-slate-900 border-slate-800 text-slate-500'
+                }`;
+                badgeEl.innerHTML = `
+                    <span>#${rowIndex + 1}</span>
+                    <span class="text-[9px] font-normal mt-0.5 ${isSelected ? 'text-blue-300' : 'text-slate-600'}">${cfg.steps}</span>
+                `;
+                rowEl.appendChild(badgeEl);
+
+                // Swatches Strip
+                const swatchesEl = document.createElement('div');
+                swatchesEl.className = 'flex-1 flex gap-2.5 overflow-x-auto pb-1 snap-x items-end';
+
+                palette.forEach((p, i) => {
+                    const hex = oklch_to_hex(p.l, p.c, p.h);
+                    const swatch = document.createElement('div');
+                    swatch.className = 'flex flex-col items-center gap-1 shrink-0 snap-center transition-transform hover:-translate-y-1';
+
+                    let label = '';
+                    if (i === 0) label = 'Start';
+                    else if (i === palette.length - 1) label = 'End';
+                    else if (p === cfg.mid) label = 'Middle';
+                    else label = `Stop ${i + 1}`;
+
+                    swatch.innerHTML = `
+                        <div class="w-12 h-12 sm:w-16 sm:h-14 rounded-lg shadow border border-white/10" style="background-color: ${hex}"></div>
+                        <span class="text-[10px] font-mono text-slate-300 uppercase">${hex}</span>
+                        <span class="text-[9px] text-slate-500 font-bold tracking-wider uppercase">${label}</span>
+                    `;
+                    swatchesEl.appendChild(swatch);
+                });
+                rowEl.appendChild(swatchesEl);
+
+                // Delete Button (present next to every row except the first one)
+                if (rowIndex > 0) {
+                    const delBtn = document.createElement('button');
+                    delBtn.type = 'button';
+                    delBtn.title = `Delete Row #${rowIndex + 1}`;
+                    delBtn.className = 'shrink-0 p-2 rounded-lg bg-slate-900/90 hover:bg-red-500/20 text-slate-400 hover:text-red-400 border border-slate-700/80 hover:border-red-500/40 transition-colors';
+                    delBtn.innerHTML = `
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                    `;
+                    delBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        deletePaletteRow(rowIndex);
+                    });
+                    rowEl.appendChild(delBtn);
+                }
+
+                listContainer.appendChild(rowEl);
+            });
+        }
+
+
+        /* --- 4. Three.js 3D Visualization --- */
+        let scene, camera, renderer, controls, curveObject;
+
+        function init3D() {
+            const container = document.getElementById('3d-container');
+            
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 100);
+            camera.position.set(12, 12, 18);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setClearColor(0x000000, 0); // Transparent background
+            container.appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.target.set(0, 5, 0);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+
+            // Draw bounding cylinder (Visual representation of OKlch space)
+            // L is Y-axis (0 to 1 -> scaled 0 to 10). Radius is C (max 0.4 -> scaled to 4)
+            const cylGeo = new THREE.CylinderGeometry(4, 4, 10, 32, 1, true);
+            const cylMat = new THREE.MeshBasicMaterial({ color: 0x334155, wireframe: true, transparent: true, opacity: 0.15 });
+            const cylinder = new THREE.Mesh(cylGeo, cylMat);
+            cylinder.position.y = 5;
+            scene.add(cylinder);
+
+            // Draw central L axis
+            const axisGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), new THREE.Vector3(0,10,0)]);
+            scene.add(new THREE.Line(axisGeo, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.2 })));
+            
+            // Draw Chroma limit rings
+            const ringMat = new THREE.LineBasicMaterial({ color: 0x64748b, transparent: true, opacity: 0.3 });
+            [0, 5, 10].forEach(y => {
+                let pts = [];
+                for(let i=0; i<=64; i++) {
+                    let a = (i/64)*Math.PI*2;
+                    pts.push(new THREE.Vector3(4*Math.cos(a), y, 4*Math.sin(a)));
+                }
+                scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), ringMat));
+            });
+
+            // Initialize the dynamic curve
+            curveObject = new THREE.Line(
+                new THREE.BufferGeometry(),
+                new THREE.LineBasicMaterial({ vertexColors: true, linewidth: 3 })
+            );
+            scene.add(curveObject);
+
+            // Resize observer
+            new ResizeObserver(() => {
+                if (container.clientWidth > 0 && container.clientHeight > 0) {
+                    camera.aspect = container.clientWidth / container.clientHeight;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(container.clientWidth, container.clientHeight);
+                }
+            }).observe(container);
+
+            animate3D();
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        function update3D(palette) {
+            if (!curveObject) return;
+            
+            let pts = [];
+            let colors = [];
+            
+            let d2m = buildCurveData(getPointAtT1).pts;
+            let m2l = buildCurveData(getPointAtT2).pts;
+            let allPts = [...d2m, ...m2l];
+
+            allPts.forEach(p => {
+                let r = (p.c / MAX_C) * 4;
+                let a = p.h * Math.PI / 180;
+                
+                // Map to ThreeJS space (X=Chroma*cosH, Z=-Chroma*sinH, Y=Lightness)
+                pts.push(new THREE.Vector3(r * Math.cos(a), p.l * 10, -r * Math.sin(a)));
+                
+                let hex = oklch_to_hex(p.l, p.c, p.h);
+                let color = new THREE.Color(hex);
+                colors.push(color.r, color.g, color.b);
+            });
+
+            curveObject.geometry.setFromPoints(pts);
+            curveObject.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+            // Generate Palette Spheres
+            if (!scene.stopSpheres) {
+                scene.stopSpheres = new THREE.Group();
+                scene.add(scene.stopSpheres);
+            }
+            // Cleanup old spheres
+            while(scene.stopSpheres.children.length > 0) { 
+                let child = scene.stopSpheres.children[0];
+                scene.stopSpheres.remove(child); 
+                child.geometry.dispose();
+                if (child.material) child.material.dispose();
+            }
+            
+            if (palette) {
+                const sphereGeo = new THREE.SphereGeometry(0.35, 16, 16);
+                palette.forEach(p => {
+                    let r = (p.c / MAX_C) * 4;
+                    let a = p.h * Math.PI / 180;
+                    let x = r * Math.cos(a);
+                    let z = -r * Math.sin(a);
+                    let y = p.l * 10;
+                    
+                    let hex = oklch_to_hex(p.l, p.c, p.h);
+                    let mat = new THREE.MeshBasicMaterial({ color: hex });
+                    let mesh = new THREE.Mesh(sphereGeo, mat);
+                    mesh.position.set(x, y, z);
+                    
+                    scene.stopSpheres.add(mesh);
+                });
+            }
+        }
+
+        // Core Update loop (Triggers on any state change)
+        function updateAll(skipTextId = null) {
+            state = appState.palettes[appState.activeIndex];
+            syncSidebar(skipTextId);
+            updateSVGs();
+            renderLCBackground(); // dynamically updates the LC background if the mid hue changed
+            let generatedPalette = generatePalette(state);
+            renderAllPaletteRows(generatedPalette);
+            update3D(generatedPalette);
+        }
+
+        // App Initialization
+        window.onload = () => {
+            initSidebar();
+            initHCBackground(); // Draws the static polar background once
+            drawGrids();
+            initInteractions();
+            init3D();
+            updateUndoRedoButtons();
+            updateAll();
+        };
+
+    </script>
+</body>
+</html>
