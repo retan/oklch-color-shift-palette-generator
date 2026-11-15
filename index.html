@@ -59,14 +59,14 @@
         }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-200 h-screen w-screen overflow-hidden flex flex-col font-sans">
+<body class="bg-slate-950 text-slate-200 min-h-screen w-full overflow-x-hidden overflow-y-auto sm:h-screen sm:w-screen sm:overflow-hidden flex flex-col font-sans">
 
     <!-- Top Area: Controls and Editors -->
-    <div class="flex-1 flex overflow-hidden">
+    <div class="flex flex-col sm:flex-1 sm:flex-row sm:overflow-hidden">
         
         <!-- Sidebar Controls -->
-        <aside class="w-80 bg-slate-900 border-r border-slate-800 flex flex-col overflow-y-auto z-10 shrink-0">
-            <div class="p-5 border-b border-slate-800">
+        <aside class="w-full sm:w-80 bg-slate-900 border-b sm:border-b-0 sm:border-r border-slate-800 flex flex-col sm:overflow-y-auto z-10 shrink-0">
+            <div class="p-4 sm:p-5 border-b border-slate-800">
                 <div class="flex items-start justify-between gap-2">
                     <div>
                         <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">OKlch Palette Plugin</h1>
@@ -87,7 +87,7 @@
                 </div>
             </div>
 
-            <div class="p-5 space-y-8 flex-1">
+            <div class="p-4 sm:p-5 space-y-6 sm:space-y-8 flex-1">
                 
                 <!-- Number of Swatches -->
                 <div>
@@ -96,7 +96,7 @@
                     </label>
                     <div class="flex items-center gap-3">
                         <input type="range" id="steps" min="3" max="256" step="1" value="9" class="flex-1 color-slider" style="background: #475569;">
-                        <input type="number" id="steps-num" min="3" max="256" value="9" class="w-16 bg-slate-900 border border-slate-700 rounded text-center text-sm focus:outline-none focus:border-blue-500 text-blue-400 font-mono py-1">
+                        <input type="number" id="steps-num" min="3" max="256" value="9" class="w-16 bg-slate-900 border border-slate-700 rounded text-center text-sm focus:outline-none focus:border-blue-500 text-white font-mono py-1">
                     </div>
                 </div>
 
@@ -104,23 +104,13 @@
                 <div id="color-inputs-container" class="space-y-6">
                     <!-- Dynamic content injected here to keep HTML DRY -->
                 </div>
-
-                <!-- Export Options -->
-                <div class="pt-4 border-t border-slate-800">
-                    <button id="export-clrs-btn" class="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold tracking-wider uppercase rounded-lg border border-slate-700 transition-colors flex items-center justify-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                        </svg>
-                        Export Infinite Painter (.clrs)
-                    </button>
-                </div>
             </div>
         </aside>
 
         <!-- Main Visualization Area -->
-        <main class="flex-1 flex flex-col bg-slate-950 relative overflow-hidden">
+        <main class="flex flex-col sm:flex-1 bg-slate-950 relative sm:overflow-hidden">
             
-            <div class="flex-1 grid grid-cols-1 xl:grid-cols-3 gap-6 p-6 overflow-y-auto">
+            <div class="grid grid-cols-1 sm:flex-1 xl:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6 sm:overflow-y-auto">
                 
                 <!-- L vs C Editor -->
                 <div class="flex flex-col items-center bg-slate-900/50 p-4 rounded-xl border border-slate-800">
@@ -130,6 +120,9 @@
                         <svg id="svg-lc" viewBox="0 0 300 300" class="editor-canvas-svg absolute inset-0 w-full h-full select-none touch-none bg-transparent">
                             <!-- Grid generated dynamically -->
                             <g id="lc-grid"></g>
+
+                            <!-- Non-selected palette ghosts (non-interactive) -->
+                            <g id="lc-ghosts" pointer-events="none"></g>
                             
                             <!-- Connecting handle lines -->
                             <line id="lc-h1-line" class="handle-line" />
@@ -183,6 +176,9 @@
                         <svg id="svg-hc" viewBox="0 0 300 300" class="editor-canvas-svg absolute inset-0 w-full h-full select-none touch-none bg-transparent overflow-visible">
                             <!-- Grid generated dynamically -->
                             <g id="hc-grid"></g>
+
+                            <!-- Non-selected palette ghosts (non-interactive) -->
+                            <g id="hc-ghosts" pointer-events="none"></g>
                             
                             <!-- Connecting handle lines -->
                             <line id="hc-h1-line" class="handle-line" />
@@ -228,7 +224,7 @@
                 </div>
 
                 <!-- 3D Viewer -->
-                <div class="flex flex-col bg-slate-900/50 p-4 rounded-xl border border-slate-800 xl:row-span-1 xl:col-span-1 h-[400px] xl:h-auto">
+                <div class="flex flex-col bg-slate-900/50 p-4 rounded-xl border border-slate-800 xl:row-span-1 xl:col-span-1 h-[340px] sm:h-[400px] xl:h-auto">
                     <h2 class="text-sm font-semibold text-slate-300 mb-4 tracking-wider uppercase text-center">3D OKlch Space</h2>
                     <div id="3d-container" class="flex-1 w-full bg-slate-900 rounded-lg shadow-inner border border-slate-700/50 overflow-hidden relative cursor-move"></div>
                 </div>
@@ -238,17 +234,40 @@
     </div>
 
     <!-- Bottom Area: Palette Output -->
-    <footer class="min-h-[11.5rem] max-h-[38vh] bg-slate-900 border-t border-slate-800 px-5 py-3.5 shrink-0 z-20 flex flex-col gap-2.5">
-        <div id="palettes-list" class="flex-1 overflow-y-auto space-y-2.5 pr-1">
+    <footer class="bg-slate-900 border-t border-slate-800 px-4 py-4 sm:px-5 sm:py-3.5 sm:min-h-[13.5rem] sm:max-h-[42vh] shrink-0 z-20 flex flex-col gap-2.5">
+        <div id="palettes-list" class="space-y-2.5 sm:flex-1 sm:overflow-y-auto sm:pr-1">
             <!-- Palette rows will be generated here -->
         </div>
-        <div class="flex justify-center pt-0.5 shrink-0">
-            <button id="add-palette-btn" class="py-1.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold tracking-wider uppercase rounded-lg border border-slate-700 transition-colors flex items-center gap-1.5 shadow-sm">
+        <!-- First Button Row: Add palette -->
+        <div class="flex items-center justify-center pt-1 shrink-0">
+            <button id="add-palette-btn" class="py-2 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold tracking-wider rounded-lg border border-slate-700 transition-colors flex items-center justify-center gap-1.5 shadow-sm">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                 </svg>
-                <span>Add Row</span>
+                <span>Add palette</span>
             </button>
+        </div>
+        <!-- Second Button Row: Export / Import -->
+        <div class="flex flex-wrap items-stretch sm:items-center justify-center gap-2.5 shrink-0">
+            <button id="export-clrs-btn" class="py-2 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold tracking-wider rounded-lg border border-slate-700 transition-colors flex items-center justify-center gap-2 shadow-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                </svg>
+                <span>Export Infinite Painter (.clrs)</span>
+            </button>
+            <button id="export-json-btn" class="py-2 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold tracking-wider rounded-lg border border-slate-700 transition-colors flex items-center justify-center gap-2 shadow-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                </svg>
+                <span>Export JSON</span>
+            </button>
+            <button id="import-json-btn" class="py-2 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold tracking-wider rounded-lg border border-slate-700 transition-colors flex items-center justify-center gap-2 shadow-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                </svg>
+                <span>Import JSON</span>
+            </button>
+            <input type="file" id="import-json-input" accept=".json,application/json" class="hidden">
         </div>
     </footer>
 
@@ -643,20 +662,20 @@
                         </div>
                     </div>
                     <div class="space-y-2">
-                        <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-2.5">
                             <span class="w-3 text-xs text-slate-500">L</span>
                             <input type="range" id="l-${sec.id}" min="0" max="1" step="0.01" class="w-full color-slider">
-                            <span id="val-l-${sec.id}" class="text-xs text-slate-400 w-8 text-right font-mono"></span>
+                            <input type="number" id="val-l-${sec.id}" min="0" max="1" step="0.01" class="w-16 shrink-0 bg-slate-900 border border-slate-700 rounded text-center text-xs focus:outline-none focus:border-blue-500 text-slate-200 font-mono py-1">
                         </div>
-                        <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-2.5">
                             <span class="w-3 text-xs text-slate-500">C</span>
                             <input type="range" id="c-${sec.id}" min="0" max="0.4" step="0.005" class="w-full color-slider">
-                            <span id="val-c-${sec.id}" class="text-xs text-slate-400 w-8 text-right font-mono"></span>
+                            <input type="number" id="val-c-${sec.id}" min="0" max="0.4" step="0.001" class="w-16 shrink-0 bg-slate-900 border border-slate-700 rounded text-center text-xs focus:outline-none focus:border-blue-500 text-slate-200 font-mono py-1">
                         </div>
-                        <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-2.5">
                             <span class="w-3 text-xs text-slate-500">H</span>
                             <input type="range" id="h-${sec.id}" min="0" max="360" step="1" class="w-full color-slider">
-                            <span id="val-h-${sec.id}" class="text-xs text-slate-400 w-8 text-right font-mono"></span>
+                            <input type="number" id="val-h-${sec.id}" min="0" max="360" step="1" class="w-16 shrink-0 bg-slate-900 border border-slate-700 rounded text-center text-xs focus:outline-none focus:border-blue-500 text-slate-200 font-mono py-1">
                         </div>
                     </div>
                 `;
@@ -687,6 +706,48 @@
                     slider.addEventListener('mouseup', () => commitPendingUndo());
                     slider.addEventListener('touchend', () => commitPendingUndo());
                     slider.addEventListener('keyup', () => commitPendingUndo());
+
+                    // Synchronized numerical input field next to each slider
+                    const numInput = document.getElementById(`val-${prop}-${k}`);
+                    numInput.addEventListener('focus', (e) => {
+                        if (state.locked[k]) return;
+                        beginPendingUndo();
+                        e.target.select();
+                    });
+                    numInput.addEventListener('input', (e) => {
+                        if (state.locked[k]) return;
+                        beginPendingUndo();
+                        let v = parseFloat(e.target.value);
+                        if (Number.isNaN(v)) return;
+                        if (prop === 'l') v = Math.max(0, Math.min(1, v));
+                        else if (prop === 'c') v = Math.max(0, Math.min(MAX_C, v));
+                        else if (prop === 'h') {
+                            if (v < 0 || v > 360) v = ((v % 360) + 360) % 360;
+                        }
+                        state[k][prop] = v;
+                        updateAll(`val-${prop}-${k}`);
+                    });
+                    numInput.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            e.target.blur();
+                        } else if (e.key === 'Escape') {
+                            e.preventDefault();
+                            if (pendingSnapshot) {
+                                restoreState(pendingSnapshot);
+                                pendingSnapshot = null;
+                            }
+                            e.target.blur();
+                        }
+                    });
+                    numInput.addEventListener('change', () => {
+                        commitPendingUndo();
+                        syncSidebar();
+                    });
+                    numInput.addEventListener('blur', () => {
+                        commitPendingUndo();
+                        syncSidebar();
+                    });
                 });
 
                 const colorInput = document.getElementById(`hex-${k}`);
@@ -769,6 +830,19 @@
             stepsNum.addEventListener('blur', () => commitPendingUndo());
 
             document.getElementById('export-clrs-btn').addEventListener('click', exportInfinitePainterClrs);
+            document.getElementById('export-json-btn').addEventListener('click', exportConfigurationJson);
+
+            const importJsonBtn = document.getElementById('import-json-btn');
+            const importJsonInput = document.getElementById('import-json-input');
+            importJsonBtn.addEventListener('click', () => {
+                importJsonInput.value = '';
+                importJsonInput.click();
+            });
+            importJsonInput.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files[0]) {
+                    importConfigurationJson(e.target.files[0]);
+                }
+            });
 
             // Undo / Redo buttons & keyboard shortcuts
             document.getElementById('undo-btn').addEventListener('click', performUndo);
@@ -893,8 +967,101 @@
             URL.revokeObjectURL(url);
         }
 
+        // Sanitize and export/import full generator configuration (excluding undo memory)
+        function sanitizePoint(pt, fallback) {
+            if (!pt || typeof pt !== 'object') return { ...fallback };
+            const l = Number.isFinite(Number(pt.l)) ? Math.max(0, Math.min(1, Number(pt.l))) : fallback.l;
+            const c = Number.isFinite(Number(pt.c)) ? Math.max(0, Math.min(MAX_C, Number(pt.c))) : fallback.c;
+            const rawH = Number(pt.h);
+            const h = Number.isFinite(rawH) ? ((rawH % 360) + 360) % 360 : fallback.h;
+            return { l, c, h };
+        }
+
+        function sanitizePaletteConfig(raw) {
+            const def = createDefaultPaletteConfig();
+            if (!raw || typeof raw !== 'object') return def;
+            const rawHandles = (raw.handles && typeof raw.handles === 'object') ? raw.handles : {};
+            const rawLocked = (raw.locked && typeof raw.locked === 'object') ? raw.locked : {};
+            const rawSteps = parseInt(raw.steps, 10);
+            const steps = Number.isFinite(rawSteps) ? Math.max(3, Math.min(256, rawSteps)) : def.steps;
+
+            return {
+                dark: sanitizePoint(raw.dark, def.dark),
+                mid: sanitizePoint(raw.mid, def.mid),
+                light: sanitizePoint(raw.light, def.light),
+                handles: {
+                    d_out: sanitizePoint(rawHandles.d_out, def.handles.d_out),
+                    m_in: sanitizePoint(rawHandles.m_in, def.handles.m_in),
+                    m_out: sanitizePoint(rawHandles.m_out, def.handles.m_out),
+                    l_in: sanitizePoint(rawHandles.l_in, def.handles.l_in)
+                },
+                locked: {
+                    dark: Boolean(rawLocked.dark),
+                    mid: Boolean(rawLocked.mid),
+                    light: Boolean(rawLocked.light)
+                },
+                steps
+            };
+        }
+
+        function exportConfigurationJson() {
+            const data = {
+                version: 1,
+                activeIndex: appState.activeIndex,
+                palettes: appState.palettes.map(clonePaletteConfig)
+            };
+            const payload = JSON.stringify(data, null, 2);
+            const blob = new Blob([payload], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `oklch_palettes_config_${appState.palettes.length}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function importConfigurationJson(file) {
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const parsed = JSON.parse(event.target.result);
+                    let rawPalettes = null;
+                    let nextActive = 0;
+
+                    if (Array.isArray(parsed)) {
+                        rawPalettes = parsed;
+                    } else if (parsed && typeof parsed === 'object') {
+                        if (Array.isArray(parsed.palettes)) {
+                            rawPalettes = parsed.palettes;
+                            if (Number.isInteger(parsed.activeIndex)) {
+                                nextActive = parsed.activeIndex;
+                            }
+                        } else if (parsed.dark || parsed.mid || parsed.light) {
+                            rawPalettes = [parsed];
+                        }
+                    }
+
+                    if (!rawPalettes || rawPalettes.length === 0) {
+                        throw new Error('No valid palette configurations found in JSON.');
+                    }
+
+                    recordImmediateUndo();
+                    appState.palettes = rawPalettes.map(sanitizePaletteConfig);
+                    appState.activeIndex = Math.max(0, Math.min(nextActive, appState.palettes.length - 1));
+                    state = appState.palettes[appState.activeIndex];
+                    updateAll();
+                } catch (err) {
+                    alert(`Failed to import JSON configuration: ${err.message}`);
+                }
+            };
+            reader.readAsText(file);
+        }
+
         // Sync Sidebar UI components based on internal state
-        function syncSidebar(skipTextId = null) {
+        function syncSidebar(skipInputId = null) {
             const lockSvgClosed = `<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" fill-rule="evenodd"></path></svg>`;
             const lockSvgOpen = `<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a5 5 0 00-5 5v2a2 2 0 00-2 2v5a2 2 0 002 2h10a2 2 0 002-2v-5a2 2 0 00-2-2H7V7a3 3 0 015.905-.75 1 1 0 001.937-.5A5.002 5.002 0 0010 2z"></path></svg>`;
 
@@ -903,13 +1070,19 @@
                 document.getElementById(`c-${k}`).value = state[k].c;
                 document.getElementById(`h-${k}`).value = state[k].h;
                 
-                document.getElementById(`val-l-${k}`).innerText = state[k].l.toFixed(2);
-                document.getElementById(`val-c-${k}`).innerText = state[k].c.toFixed(3);
-                document.getElementById(`val-h-${k}`).innerText = Math.round(state[k].h);
+                if (skipInputId !== `val-l-${k}`) {
+                    document.getElementById(`val-l-${k}`).value = state[k].l.toFixed(2);
+                }
+                if (skipInputId !== `val-c-${k}`) {
+                    document.getElementById(`val-c-${k}`).value = state[k].c.toFixed(3);
+                }
+                if (skipInputId !== `val-h-${k}`) {
+                    document.getElementById(`val-h-${k}`).value = Math.round(state[k].h);
+                }
                 
                 let hex = oklch_to_hex(state[k].l, state[k].c, state[k].h);
                 document.getElementById(`hex-${k}`).value = hex;
-                if (skipTextId !== `text-${k}`) {
+                if (skipInputId !== `text-${k}`) {
                     document.getElementById(`text-${k}`).value = hex;
                 }
                 
@@ -919,7 +1092,7 @@
                 document.getElementById(`lock-${k}`).className = isLocked ? "text-white transition-colors p-1" : "text-slate-500 hover:text-white transition-colors p-1";
                 document.getElementById(`section-${k}`).style.opacity = isLocked ? "0.6" : "1";
                 
-                ['l', 'c', 'h', 'hex', 'text'].forEach(prop => {
+                ['l', 'c', 'h', 'hex', 'text', 'val-l', 'val-c', 'val-h'].forEach(prop => {
                     document.getElementById(`${prop}-${k}`).disabled = isLocked;
                 });
 
@@ -1036,6 +1209,46 @@
         }
 
         function updateSVGs() {
+            // Render non-selected palettes as 25% opacity non-interactive ghosts
+            const lcGhosts = document.getElementById('lc-ghosts');
+            const hcGhosts = document.getElementById('hc-ghosts');
+            let lcGhostHtml = '';
+            let hcGhostHtml = '';
+
+            appState.palettes.forEach((cfg, idx) => {
+                if (idx === appState.activeIndex) return;
+                const gD2m = buildCurveData(t => getPointAtT1(t, cfg)).pts;
+                const gM2l = buildCurveData(t => getPointAtT2(t, cfg)).pts;
+
+                const lcD1 = getPolyline(gD2m, p => mapLC_X(p.c), p => mapLC_Y(p.l));
+                const lcD2 = getPolyline(gM2l, p => mapLC_X(p.c), p => mapLC_Y(p.l));
+
+                const hcD1 = getPolyline(gD2m, p => mapHC_X(p.c, p.h), p => mapHC_Y(p.c, p.h));
+                const hcD2 = getPolyline(gM2l, p => mapHC_X(p.c, p.h), p => mapHC_Y(p.c, p.h));
+
+                let lcStopsHtml = '';
+                let hcStopsHtml = '';
+                keys.forEach(k => {
+                    const pt = cfg[k];
+                    const hex = oklch_to_hex(pt.l, pt.c, pt.h);
+                    const lx = mapLC_X(pt.c);
+                    const ly = mapLC_Y(pt.l);
+                    const hx = mapHC_X(pt.c, pt.h);
+                    const hy = mapHC_Y(pt.c, pt.h);
+
+                    lcStopsHtml += `<circle cx="${lx}" cy="${ly}" r="7" fill="#f8fafc" stroke="#0f172a" stroke-width="2" />` +
+                                   `<circle cx="${lx}" cy="${ly}" r="3.5" fill="${hex}" />`;
+                    hcStopsHtml += `<circle cx="${hx}" cy="${hy}" r="7" fill="#f8fafc" stroke="#0f172a" stroke-width="2" />` +
+                                   `<circle cx="${hx}" cy="${hy}" r="3.5" fill="${hex}" />`;
+                });
+
+                lcGhostHtml += `<g opacity="0.25"><path d="${lcD1}" class="curve-1" /><path d="${lcD2}" class="curve-2" />${lcStopsHtml}</g>`;
+                hcGhostHtml += `<g opacity="0.25"><path d="${hcD1}" class="curve-1" /><path d="${hcD2}" class="curve-2" />${hcStopsHtml}</g>`;
+            });
+
+            lcGhosts.innerHTML = lcGhostHtml;
+            hcGhosts.innerHTML = hcGhostHtml;
+
             let d2m = buildCurveData(getPointAtT1).pts;
             let m2l = buildCurveData(getPointAtT2).pts;
 
@@ -1237,18 +1450,6 @@
                 updateAll();
             }
 
-            // Helpers to map handles back and forth to OKlab coordinate space
-            function toLab(p) {
-                let hRad = p.h * Math.PI / 180;
-                return { L: p.l, a: p.c * Math.cos(hRad), b: p.c * Math.sin(hRad) };
-            }
-            function toLch(L, a, b) {
-                let c = Math.sqrt(a * a + b * b);
-                let h = Math.atan2(b, a) * 180 / Math.PI;
-                if (h < 0) h += 360;
-                return { l: Math.max(0, Math.min(1, L)), c: Math.max(0, Math.min(MAX_C, c)), h: h };
-            }
-
             function handleMove(e) {
                 if (bgDragging) {
                     const svg = bgDragSpace === 'LC' ? svgLC : svgHC;
@@ -1381,7 +1582,7 @@
                 const palette = isSelected ? activePalette : generatePalette(cfg);
 
                 const rowEl = document.createElement('div');
-                rowEl.className = `flex items-center gap-3 p-2.5 rounded-xl border transition-all cursor-pointer ${
+                rowEl.className = `flex items-center gap-2.5 sm:gap-3 p-2.5 rounded-xl border transition-all cursor-pointer min-w-0 ${
                     isSelected
                         ? 'bg-slate-800/80 border-blue-400/70 ring-1 ring-blue-400/30 shadow-md'
                         : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 hover:bg-slate-800/40 opacity-85 hover:opacity-100'
@@ -1403,7 +1604,7 @@
 
                 // Swatches Strip
                 const swatchesEl = document.createElement('div');
-                swatchesEl.className = 'flex-1 flex gap-2.5 overflow-x-auto pb-1 snap-x items-end';
+                swatchesEl.className = 'flex-1 min-w-0 flex gap-2.5 overflow-x-auto pb-1 snap-x items-end';
 
                 palette.forEach((p, i) => {
                     const hex = oklch_to_hex(p.l, p.c, p.h);
@@ -1429,7 +1630,7 @@
                 if (rowIndex > 0) {
                     const delBtn = document.createElement('button');
                     delBtn.type = 'button';
-                    delBtn.title = `Delete Row #${rowIndex + 1}`;
+                    delBtn.title = `Delete Palette #${rowIndex + 1}`;
                     delBtn.className = 'shrink-0 p-2 rounded-lg bg-slate-900/90 hover:bg-red-500/20 text-slate-400 hover:text-red-400 border border-slate-700/80 hover:border-red-500/40 transition-colors';
                     delBtn.innerHTML = `
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1518,6 +1719,70 @@
 
         function update3D(palette) {
             if (!curveObject) return;
+
+            // Render non-selected palettes as 25% opacity ghosts in 3D space
+            if (!scene.ghostGroup) {
+                scene.ghostGroup = new THREE.Group();
+                scene.add(scene.ghostGroup);
+            }
+            while (scene.ghostGroup.children.length > 0) {
+                let child = scene.ghostGroup.children[0];
+                scene.ghostGroup.remove(child);
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) child.material.dispose();
+            }
+
+            const ghostSphereGeo = new THREE.SphereGeometry(0.35, 16, 16);
+            appState.palettes.forEach((cfg, idx) => {
+                if (idx === appState.activeIndex) return;
+
+                let gD2m = buildCurveData(t => getPointAtT1(t, cfg)).pts;
+                let gM2l = buildCurveData(t => getPointAtT2(t, cfg)).pts;
+                let gAllPts = [...gD2m, ...gM2l];
+
+                let gPts = [];
+                let gColors = [];
+                gAllPts.forEach(p => {
+                    let r = (p.c / MAX_C) * 4;
+                    let a = p.h * Math.PI / 180;
+                    gPts.push(new THREE.Vector3(r * Math.cos(a), p.l * 10, -r * Math.sin(a)));
+
+                    let hex = oklch_to_hex(p.l, p.c, p.h);
+                    let color = new THREE.Color(hex);
+                    gColors.push(color.r, color.g, color.b);
+                });
+
+                let gCurveGeo = new THREE.BufferGeometry().setFromPoints(gPts);
+                gCurveGeo.setAttribute('color', new THREE.Float32BufferAttribute(gColors, 3));
+                let gCurveMat = new THREE.LineBasicMaterial({
+                    vertexColors: true,
+                    linewidth: 3,
+                    transparent: true,
+                    opacity: 0.25,
+                    depthWrite: false
+                });
+                scene.ghostGroup.add(new THREE.Line(gCurveGeo, gCurveMat));
+
+                let gPalette = generatePalette(cfg);
+                gPalette.forEach(p => {
+                    let r = (p.c / MAX_C) * 4;
+                    let a = p.h * Math.PI / 180;
+                    let x = r * Math.cos(a);
+                    let z = -r * Math.sin(a);
+                    let y = p.l * 10;
+
+                    let hex = oklch_to_hex(p.l, p.c, p.h);
+                    let mat = new THREE.MeshBasicMaterial({
+                        color: hex,
+                        transparent: true,
+                        opacity: 0.25,
+                        depthWrite: false
+                    });
+                    let mesh = new THREE.Mesh(ghostSphereGeo, mat);
+                    mesh.position.set(x, y, z);
+                    scene.ghostGroup.add(mesh);
+                });
+            });
             
             let pts = [];
             let colors = [];
@@ -1574,9 +1839,9 @@
         }
 
         // Core Update loop (Triggers on any state change)
-        function updateAll(skipTextId = null) {
+        function updateAll(skipInputId = null) {
             state = appState.palettes[appState.activeIndex];
-            syncSidebar(skipTextId);
+            syncSidebar(skipInputId);
             updateSVGs();
             renderLCBackground(); // dynamically updates the LC background if the mid hue changed
             let generatedPalette = generatePalette(state);
