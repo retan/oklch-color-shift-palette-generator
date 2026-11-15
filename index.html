@@ -59,10 +59,10 @@
         }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-200 min-h-screen w-full overflow-x-hidden overflow-y-auto sm:h-screen sm:w-screen sm:overflow-hidden flex flex-col font-sans">
+<body class="bg-slate-950 text-slate-200 min-h-screen w-full overflow-x-hidden overflow-y-auto sm:h-screen sm:h-[100dvh] sm:w-screen sm:overflow-hidden flex flex-col font-sans">
 
     <!-- Top Area: Controls and Editors -->
-    <div class="flex flex-col sm:flex-1 sm:flex-row sm:overflow-hidden">
+    <div class="flex flex-col sm:flex-1 sm:min-h-0 sm:flex-row sm:overflow-hidden">
         
         <!-- Sidebar Controls -->
         <aside class="w-full sm:w-80 bg-slate-900 border-b sm:border-b-0 sm:border-r border-slate-800 flex flex-col sm:overflow-y-auto z-10 shrink-0">
@@ -234,8 +234,8 @@
     </div>
 
     <!-- Bottom Area: Palette Output -->
-    <footer class="bg-slate-900 border-t border-slate-800 px-4 py-4 sm:px-5 sm:py-3.5 sm:min-h-[13.5rem] sm:max-h-[42vh] shrink-0 z-20 flex flex-col gap-2.5">
-        <div id="palettes-list" class="space-y-2.5 sm:flex-1 sm:overflow-y-auto sm:pr-1">
+    <footer class="bg-slate-900 border-t border-slate-800 px-4 py-4 sm:px-5 sm:py-3 sm:max-h-[46dvh] shrink-0 z-20 flex flex-col gap-2">
+        <div id="palettes-list" class="space-y-2 sm:min-h-[4.5rem] sm:flex-1 sm:overflow-y-auto sm:pr-1">
             <!-- Palette rows will be generated here -->
         </div>
         <!-- First Button Row: Add palette -->
