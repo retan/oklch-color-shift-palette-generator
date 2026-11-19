@@ -1143,26 +1143,46 @@
         }
 
         function initHCBackground() {
-            // HC Background - Radial distance = chroma, Angle = Hue (Lightness locked at 0.5)
-            // Rendered only once since it doesn't depend on dynamically changing parameters
+            // HC Background - Radial distance = chroma, Angle = Hue (Lightness locked at 0.5).
+            // Areas outside the sRGB gamut are overlaid with black at 50% opacity.
+            // Rendered only once since it doesn't depend on dynamically changing parameters.
             const hcCtx = document.getElementById('bg-hc').getContext('2d');
             const hcImg = hcCtx.createImageData(300, 300);
+            const eps = 1e-6;
+            const outOfGamutScale = 70 / 325; // Equivalent to compositing rgba(0, 0, 0, 0.5) over alpha 70/255
+
             for (let y = 0; y < 300; y++) {
                 for (let x = 0; x < 300; x++) {
                     let dx = x - 150;
                     let dy = 150 - y;
-                    let r = Math.sqrt(dx*dx + dy*dy);
+                    let r = Math.sqrt(dx * dx + dy * dy);
                     if (r > 150) continue;
-                    let a = Math.atan2(dy, dx) * 180 / Math.PI;
-                    if (a < 0) a += 360;
+
                     let c = (r / 150) * MAX_C;
-                    let hex = oklch_to_hex(0.5, c, a);
-                    let rgb = hex_to_srgb(hex);
+                    let cosH = r > 0 ? dx / r : 1;
+                    let sinH = r > 0 ? dy / r : 0;
+                    let lin = oklab_to_linear_srgb(0.5, c * cosH, c * sinH);
+
+                    let inGamut = lin.r >= -eps && lin.r <= 1 + eps &&
+                                  lin.g >= -eps && lin.g <= 1 + eps &&
+                                  lin.b >= -eps && lin.b <= 1 + eps;
+
+                    let sr = Math.max(0, Math.min(1, linear_srgb_to_srgb(Math.max(0, Math.min(1, lin.r))))) * 255;
+                    let sg = Math.max(0, Math.min(1, linear_srgb_to_srgb(Math.max(0, Math.min(1, lin.g))))) * 255;
+                    let sb = Math.max(0, Math.min(1, linear_srgb_to_srgb(Math.max(0, Math.min(1, lin.b))))) * 255;
+
                     let idx = (y * 300 + x) * 4;
-                    hcImg.data[idx] = rgb.r * 255;
-                    hcImg.data[idx+1] = rgb.g * 255;
-                    hcImg.data[idx+2] = rgb.b * 255;
-                    hcImg.data[idx+3] = 70; // Transparent to keep grids visible
+                    if (inGamut) {
+                        hcImg.data[idx] = sr;
+                        hcImg.data[idx + 1] = sg;
+                        hcImg.data[idx + 2] = sb;
+                        hcImg.data[idx + 3] = 70; // Transparent to keep grids visible
+                    } else {
+                        hcImg.data[idx] = sr * outOfGamutScale;
+                        hcImg.data[idx + 1] = sg * outOfGamutScale;
+                        hcImg.data[idx + 2] = sb * outOfGamutScale;
+                        hcImg.data[idx + 3] = 163; // 50% black overlay over base color
+                    }
                 }
             }
             hcCtx.putImageData(hcImg, 0, 0);
@@ -1170,26 +1190,45 @@
 
         let cachedMidHue = null;
         function renderLCBackground() {
-            // LC Background - Lightness changes vertically, hue syncs with middle stop
-            // We cache it so we only re-run the pixel loop if the hue genuinely changed during dragging
+            // LC Background - Lightness changes vertically, hue syncs with middle stop.
+            // Areas outside the sRGB gamut at the middle stop's hue are overlaid with black at 50% opacity.
             if (cachedMidHue === state.mid.h) return;
             cachedMidHue = state.mid.h;
 
             const lcCtx = document.getElementById('bg-lc').getContext('2d');
             const lcImg = lcCtx.createImageData(300, 300);
-            let midH = state.mid.h;
+            let hRad = state.mid.h * Math.PI / 180;
+            let cosH = Math.cos(hRad);
+            let sinH = Math.sin(hRad);
+            const eps = 1e-6;
+            const outOfGamutScale = 70 / 325; // Equivalent to compositing rgba(0, 0, 0, 0.5) over alpha 70/255
             
             for (let y = 0; y < 300; y++) {
+                let l = 1 - (y / 300);
                 for (let x = 0; x < 300; x++) {
-                    let l = 1 - (y / 300);
                     let c = (x / 300) * MAX_C;
-                    let hex = oklch_to_hex(l, c, midH);
-                    let rgb = hex_to_srgb(hex);
+                    let lin = oklab_to_linear_srgb(l, c * cosH, c * sinH);
+
+                    let inGamut = lin.r >= -eps && lin.r <= 1 + eps &&
+                                  lin.g >= -eps && lin.g <= 1 + eps &&
+                                  lin.b >= -eps && lin.b <= 1 + eps;
+
+                    let sr = Math.max(0, Math.min(1, linear_srgb_to_srgb(Math.max(0, Math.min(1, lin.r))))) * 255;
+                    let sg = Math.max(0, Math.min(1, linear_srgb_to_srgb(Math.max(0, Math.min(1, lin.g))))) * 255;
+                    let sb = Math.max(0, Math.min(1, linear_srgb_to_srgb(Math.max(0, Math.min(1, lin.b))))) * 255;
+
                     let idx = (y * 300 + x) * 4;
-                    lcImg.data[idx] = rgb.r * 255;
-                    lcImg.data[idx+1] = rgb.g * 255;
-                    lcImg.data[idx+2] = rgb.b * 255;
-                    lcImg.data[idx+3] = 70; // Transparent to keep grids visible
+                    if (inGamut) {
+                        lcImg.data[idx] = sr;
+                        lcImg.data[idx + 1] = sg;
+                        lcImg.data[idx + 2] = sb;
+                        lcImg.data[idx + 3] = 70; // Transparent to keep grids visible
+                    } else {
+                        lcImg.data[idx] = sr * outOfGamutScale;
+                        lcImg.data[idx + 1] = sg * outOfGamutScale;
+                        lcImg.data[idx + 2] = sb * outOfGamutScale;
+                        lcImg.data[idx + 3] = 163; // 50% black overlay over base color
+                    }
                 }
             }
             lcCtx.putImageData(lcImg, 0, 0);
