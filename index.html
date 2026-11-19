@@ -13,14 +13,82 @@
         .point { cursor: grab; transition: r 0.1s; }
         .point:active { cursor: grabbing; }
         .point:hover { r: 8; stroke-width: 3; }
+        .point.is-locked { cursor: not-allowed; opacity: 0.6; }
+        .point.is-locked:active { cursor: not-allowed; }
         .handle-line { stroke: #64748b; stroke-width: 1.5; stroke-dasharray: 4; }
         .curve-1 { stroke: #ffffff; fill: none; stroke-width: 3.5; stroke-linecap: round; }
         .curve-2 { stroke: #ffffff; fill: none; stroke-width: 3.5; stroke-linecap: round; }
         .ctrl-point { fill: #f8fafc; stroke: #0f172a; stroke-width: 2; r: 6; }
         .main-point { fill: #f8fafc; stroke: #0f172a; stroke-width: 2; r: 7; }
         .inner-point { fill: currentColor; pointer-events: none; }
+        .ghost-main-point { fill: #f8fafc; stroke: #0f172a; stroke-width: 2; r: 7; }
+        .ghost-inner-point { r: 3.5; }
         .editor-canvas-svg { cursor: grab; }
         .editor-canvas-svg.is-panning { cursor: grabbing; }
+
+        /* Color Input Swatch Styling Fix */
+        input[type="color"] {
+            -webkit-appearance: none;
+            appearance: none;
+            padding: 0;
+            border: none;
+            background: transparent;
+        }
+        input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+        input[type="color"]::-webkit-color-swatch {
+            border: none;
+            border-right: 1px solid #334155;
+            border-radius: 0;
+        }
+        input[type="color"]::-moz-color-swatch {
+            border: none;
+            border-right: 1px solid #334155;
+            border-radius: 0;
+        }
+
+        /* Full-viewport expanded visual editor mode */
+        .editor-card.is-expanded {
+            position: fixed;
+            inset: 0;
+            z-index: 50;
+            background-color: #020617;
+            border-radius: 0;
+            border: none;
+            padding: 1rem;
+            justify-content: space-between;
+            overflow-y: auto;
+        }
+        @media (min-width: 640px) {
+            .editor-card.is-expanded {
+                padding: 1.5rem;
+            }
+        }
+        .editor-card.is-expanded .editor-header {
+            max-width: 56rem;
+            margin-bottom: 0.5rem;
+        }
+        .editor-card.is-expanded .editor-stage {
+            width: min(calc(100vw - 2rem), calc(100dvh - 10.5rem));
+            height: min(calc(100vw - 2rem), calc(100dvh - 10.5rem));
+            max-width: none;
+            flex-shrink: 0;
+        }
+        .editor-card.is-expanded .editor-caption,
+        .editor-card.is-expanded .editor-actions {
+            max-width: 28rem;
+        }
+        /* Finer nodes & strokes in expanded mode for high-precision control */
+        .editor-card.is-expanded .ctrl-point { r: 3.5; stroke-width: 1.2; }
+        .editor-card.is-expanded .main-point { r: 4.5; stroke-width: 1.2; }
+        .editor-card.is-expanded .inner-point { r: 2.2; }
+        .editor-card.is-expanded .ghost-main-point { r: 4.5; stroke-width: 1.2; }
+        .editor-card.is-expanded .ghost-inner-point { r: 2.2; }
+        .editor-card.is-expanded .point:hover { r: 5.5; stroke-width: 1.6; }
+        .editor-card.is-expanded .curve-1,
+        .editor-card.is-expanded .curve-2 { stroke-width: 2; }
+        .editor-card.is-expanded .handle-line { stroke-width: 1; stroke-dasharray: 2.5; }
         
         /* Hide scrollbars but keep functionality */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -61,6 +129,9 @@
 </head>
 <body class="bg-slate-950 text-slate-200 min-h-dvh w-full overflow-x-hidden overflow-y-auto sm:h-dvh sm:w-screen sm:overflow-hidden flex flex-col font-sans">
 
+    <!-- Status Toast Banner (replaces blocking alerts) -->
+    <div id="status-toast" class="fixed top-4 right-4 z-50 hidden max-w-sm px-4 py-3 rounded-xl bg-slate-900 border border-red-500/60 text-slate-100 text-xs shadow-xl"></div>
+
     <!-- Top Area: Controls and Editors -->
     <div class="flex flex-col sm:flex-1 sm:min-h-0 sm:flex-row sm:overflow-hidden">
         
@@ -87,19 +158,7 @@
                 </div>
             </div>
 
-            <div class="p-4 sm:p-5 space-y-6 sm:space-y-8 flex-1">
-                
-                <!-- Number of Swatches -->
-                <div>
-                    <label class="flex justify-between text-sm font-semibold mb-2">
-                        <span>Color Stops</span>
-                    </label>
-                    <div class="flex items-center gap-3">
-                        <input type="range" id="steps" min="3" max="256" step="1" value="9" class="flex-1 color-slider" style="background: #475569;">
-                        <input type="number" id="steps-num" min="3" max="256" value="9" class="w-16 bg-slate-900 border border-slate-700 rounded text-center text-sm focus:outline-none focus:border-blue-500 text-white font-mono py-1">
-                    </div>
-                </div>
-
+            <div class="p-4 sm:p-5 space-y-6 flex-1">
                 <!-- Colors Loop rendered via JS logic below -->
                 <div id="color-inputs-container" class="space-y-6">
                     <!-- Dynamic content injected here to keep HTML DRY -->
@@ -113,9 +172,24 @@
             <div class="grid grid-cols-1 sm:flex-1 xl:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6 sm:overflow-y-auto">
                 
                 <!-- L vs C Editor -->
-                <div class="flex flex-col items-center bg-slate-900/50 p-4 rounded-xl border border-slate-800">
-                    <h2 class="text-sm font-semibold text-slate-300 mb-4 tracking-wider uppercase">Lightness vs Chroma</h2>
-                    <div class="relative w-full max-w-[300px] aspect-square rounded-lg shadow-inner border border-slate-700/50 overflow-hidden">
+                <div id="card-lc" class="editor-card flex flex-col items-center bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+                    <div id="lc-header" class="editor-header w-full flex flex-wrap items-center justify-between gap-2 mb-4">
+                        <h2 class="text-sm font-semibold text-slate-300 tracking-wider uppercase">Lightness vs Chroma</h2>
+                        <div class="flex items-center gap-2">
+                            <label class="inline-flex items-center gap-1.5 cursor-pointer select-none bg-slate-800/80 hover:bg-slate-800 px-2 py-1 rounded-lg border border-slate-700/80 transition-colors" title="Toggle sRGB gamut boundary overlay">
+                                <input type="checkbox" id="gamut-toggle-lc" class="sr-only peer">
+                                <span class="relative w-7 h-4 bg-slate-700 rounded-full transition-colors peer-checked:bg-blue-500 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-transform peer-checked:after:translate-x-3"></span>
+                                <span class="text-[11px] font-medium text-slate-400 peer-checked:text-slate-200">Gamut</span>
+                            </label>
+                            <button id="expand-lc-btn" type="button" class="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-medium border border-slate-700/80 transition-colors" title="Expand editor to full viewport">
+                                <svg id="expand-lc-icon" class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
+                                </svg>
+                                <span id="expand-lc-label">Expand</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="lc-stage" class="editor-stage relative w-full max-w-[300px] aspect-square rounded-lg shadow-inner border border-slate-700/50 overflow-hidden">
                         <canvas id="bg-lc" width="300" height="300" class="absolute inset-0 w-full h-full"></canvas>
                         <svg id="svg-lc" viewBox="0 0 300 300" class="editor-canvas-svg absolute inset-0 w-full h-full select-none touch-none bg-transparent">
                             <!-- Grid generated dynamically -->
@@ -148,11 +222,11 @@
                             <circle id="lc-l-inner" r="3.5" class="inner-point" />
                         </svg>
                     </div>
-                    <div class="w-full max-w-[300px] flex justify-between text-[10px] text-slate-500 mt-2 px-1">
+                    <div id="lc-caption" class="editor-caption w-full max-w-[300px] flex justify-between text-[10px] text-slate-500 mt-2 px-1">
                         <span>0 Chroma</span>
                         <span>0.4 Chroma</span>
                     </div>
-                    <div class="w-full max-w-[300px] grid grid-cols-2 gap-2 mt-3">
+                    <div id="lc-actions" class="editor-actions w-full max-w-[300px] grid grid-cols-2 gap-2 mt-3">
                         <button id="reflect-lc-l" class="py-1.5 px-2.5 bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-medium rounded-lg border border-slate-700/80 transition-colors flex items-center justify-center gap-1.5" title="Reflect Lightness of all stops and handles around 0.5">
                             <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
@@ -169,9 +243,24 @@
                 </div>
 
                 <!-- H vs C Editor -->
-                <div class="flex flex-col items-center bg-slate-900/50 p-4 rounded-xl border border-slate-800">
-                    <h2 class="text-sm font-semibold text-slate-300 mb-4 tracking-wider uppercase">Hue vs Chroma (Polar)</h2>
-                    <div class="relative w-full max-w-[300px] aspect-square rounded-full shadow-inner border border-slate-700/50 overflow-hidden">
+                <div id="card-hc" class="editor-card flex flex-col items-center bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+                    <div id="hc-header" class="editor-header w-full flex flex-wrap items-center justify-between gap-2 mb-4">
+                        <h2 class="text-sm font-semibold text-slate-300 tracking-wider uppercase">Hue vs Chroma (Polar)</h2>
+                        <div class="flex items-center gap-2">
+                            <label class="inline-flex items-center gap-1.5 cursor-pointer select-none bg-slate-800/80 hover:bg-slate-800 px-2 py-1 rounded-lg border border-slate-700/80 transition-colors" title="Toggle sRGB gamut boundary overlay at L=0.5">
+                                <input type="checkbox" id="gamut-toggle-hc" class="sr-only peer">
+                                <span class="relative w-7 h-4 bg-slate-700 rounded-full transition-colors peer-checked:bg-blue-500 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-transform peer-checked:after:translate-x-3"></span>
+                                <span class="text-[11px] font-medium text-slate-400 peer-checked:text-slate-200">Gamut</span>
+                            </label>
+                            <button id="expand-hc-btn" type="button" class="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-medium border border-slate-700/80 transition-colors" title="Expand editor to full viewport">
+                                <svg id="expand-hc-icon" class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
+                                </svg>
+                                <span id="expand-hc-label">Expand</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="hc-stage" class="editor-stage relative w-full max-w-[300px] aspect-square rounded-full shadow-inner border border-slate-700/50 overflow-hidden">
                         <canvas id="bg-hc" width="300" height="300" class="absolute inset-0 w-full h-full"></canvas>
                         <svg id="svg-hc" viewBox="0 0 300 300" class="editor-canvas-svg absolute inset-0 w-full h-full select-none touch-none bg-transparent overflow-visible">
                             <!-- Grid generated dynamically -->
@@ -204,10 +293,10 @@
                             <circle id="hc-l-inner" r="3.5" class="inner-point" />
                         </svg>
                     </div>
-                    <div class="w-full max-w-[300px] text-center text-[10px] text-slate-500 mt-2">
+                    <div id="hc-caption" class="editor-caption w-full max-w-[300px] text-center text-[10px] text-slate-500 mt-2">
                         Radial Distance = Chroma | Angle = Hue
                     </div>
-                    <div class="w-full max-w-[300px] grid grid-cols-2 gap-2 mt-3">
+                    <div id="hc-actions" class="editor-actions w-full max-w-[300px] grid grid-cols-2 gap-2 mt-3">
                         <button id="reflect-hc-h" class="py-1.5 px-2.5 bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-medium rounded-lg border border-slate-700/80 transition-colors flex items-center justify-center gap-1.5" title="Reflect Hue of all stops and handles around 0°">
                             <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
@@ -234,8 +323,8 @@
     </div>
 
     <!-- Bottom Area: Palette Output -->
-    <footer class="bg-slate-900 border-t border-slate-800 px-4 py-4 sm:px-5 sm:py-3 sm:max-h-[46dvh] shrink-0 z-20 flex flex-col gap-2">
-        <div id="palettes-list" class="space-y-2 sm:min-h-[4.5rem] sm:flex-1 sm:overflow-y-auto sm:pr-1">
+    <footer class="bg-slate-900 border-t border-slate-800 px-4 py-4 sm:px-5 sm:py-3 sm:max-h-[50dvh] shrink-0 z-20 flex flex-col gap-2">
+        <div id="palettes-list" class="space-y-2 sm:min-h-[5.5rem] sm:flex-1 sm:overflow-y-auto sm:pr-1">
             <!-- Palette rows will be generated here -->
         </div>
         <!-- First Button Row: Add palette -->
@@ -259,13 +348,13 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
                 </svg>
-                <span>Export JSON</span>
+                <span>Export Config JSON</span>
             </button>
             <button id="import-json-btn" class="py-2 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold tracking-wider rounded-lg border border-slate-700 transition-colors flex items-center justify-center gap-2 shadow-sm">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
                 </svg>
-                <span>Import JSON</span>
+                <span>Import Config JSON</span>
             </button>
             <input type="file" id="import-json-input" accept=".json,application/json" class="hidden">
         </div>
@@ -315,13 +404,27 @@
         // Active palette reference for sidebar, 2D SVG editors, and 3D viewer
         let state = appState.palettes[0];
 
+        // Visual Editor UI state (Gamut overlays turned off by default)
+        const uiState = {
+            showGamutLC: false,
+            showGamutHC: false,
+            expandedEditor: null // 'LC' | 'HC' | null
+        };
+
         const keys = ['dark', 'mid', 'light'];
         const MAX_C = 0.4;
-        let dragging = null;   // Reference to point being dragged
-        let dragSpace = null;  // 'LC' or 'HC' context of the drag event
-        let dragChanged = false;
 
-        // Background drag state
+        function isHandleLocked(handleKey, cfg = state) {
+            if (handleKey === 'd_out') return Boolean(cfg.locked.dark);
+            if (handleKey === 'm_in' || handleKey === 'm_out') return Boolean(cfg.locked.mid);
+            if (handleKey === 'l_in') return Boolean(cfg.locked.light);
+            return false;
+        }
+
+        // Drag & Pan interaction state
+        let dragging = null;        // { type: 'point' | 'handle', key: string }
+        let dragSpace = null;       // 'LC' | 'HC'
+        let dragChanged = false;
         let bgDragging = false;
         let bgDragSpace = null;
         let bgStartLoc = null;
@@ -330,47 +433,39 @@
         let bgCumDH = 0;
         let lastBgMoveEvent = null;
 
-        // Single-step Undo / Redo snapshots
+        // Single-step Undo / Redo state
         let undoSnapshot = null;
         let redoSnapshot = null;
         let pendingSnapshot = null;
+        let toastTimer = null;
 
-        function cloneState() {
+        function showToast(message) {
+            const el = document.getElementById('status-toast');
+            if (!el) return;
+            el.textContent = message;
+            el.classList.remove('hidden');
+            if (toastTimer) clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                el.classList.add('hidden');
+            }, 4000);
+        }
+
+        function captureFullSnapshot() {
             return {
                 palettes: appState.palettes.map(clonePaletteConfig),
                 activeIndex: appState.activeIndex
             };
         }
 
-        function paletteConfigsEqual(a, b) {
-            if (!a || !b) return false;
-            if (a.steps !== b.steps) return false;
-            for (const k of keys) {
-                if (a.locked[k] !== b.locked[k]) return false;
-                if (Math.abs(a[k].l - b[k].l) > 1e-6 || Math.abs(a[k].c - b[k].c) > 1e-6 || Math.abs(a[k].h - b[k].h) > 1e-4) return false;
-            }
-            for (const hk of ['d_out', 'm_in', 'm_out', 'l_in']) {
-                if (Math.abs(a.handles[hk].l - b.handles[hk].l) > 1e-6 || Math.abs(a.handles[hk].c - b.handles[hk].c) > 1e-6 || Math.abs(a.handles[hk].h - b.handles[hk].h) > 1e-4) return false;
-            }
-            return true;
-        }
-
-        function statesEqual(a, b) {
-            if (!a || !b) return false;
-            if (a.activeIndex !== b.activeIndex) return false;
-            if (a.palettes.length !== b.palettes.length) return false;
-            for (let i = 0; i < a.palettes.length; i++) {
-                if (!paletteConfigsEqual(a.palettes[i], b.palettes[i])) return false;
-            }
-            return true;
-        }
-
-        function restoreState(snap) {
-            if (!snap || !snap.palettes || snap.palettes.length === 0) return;
+        function restoreFullSnapshot(snap) {
+            if (!snap) return;
             appState.palettes = snap.palettes.map(clonePaletteConfig);
             appState.activeIndex = Math.max(0, Math.min(snap.activeIndex, appState.palettes.length - 1));
             state = appState.palettes[appState.activeIndex];
-            updateAll();
+        }
+
+        function snapshotsEqual(a, b) {
+            return JSON.stringify(a) === JSON.stringify(b);
         }
 
         function updateUndoRedoButtons() {
@@ -380,54 +475,53 @@
             if (redoBtn) redoBtn.disabled = !redoSnapshot;
         }
 
-        // Capture state right before a continuous gesture (drag, typing, slider) begins
+        function recordImmediateUndo() {
+            undoSnapshot = captureFullSnapshot();
+            redoSnapshot = null;
+            pendingSnapshot = null;
+            updateUndoRedoButtons();
+        }
+
         function beginPendingUndo() {
             if (!pendingSnapshot) {
-                pendingSnapshot = cloneState();
+                pendingSnapshot = captureFullSnapshot();
             }
         }
 
-        // Commit captured state as the single undo step once gesture completes
         function commitPendingUndo() {
-            if (pendingSnapshot && !statesEqual(pendingSnapshot, appState)) {
+            if (!pendingSnapshot) return;
+            const current = captureFullSnapshot();
+            if (!snapshotsEqual(pendingSnapshot, current)) {
                 undoSnapshot = pendingSnapshot;
                 redoSnapshot = null;
-                updateUndoRedoButtons();
             }
-            pendingSnapshot = null;
-        }
-
-        // Record a single-action change immediately (e.g. reflect button, lock toggle)
-        function recordImmediateUndo() {
-            undoSnapshot = cloneState();
-            redoSnapshot = null;
             pendingSnapshot = null;
             updateUndoRedoButtons();
         }
 
         function performUndo() {
             if (!undoSnapshot) return;
-            const prev = undoSnapshot;
-            redoSnapshot = cloneState();
+            redoSnapshot = captureFullSnapshot();
+            restoreFullSnapshot(undoSnapshot);
             undoSnapshot = null;
             pendingSnapshot = null;
-            restoreState(prev);
             updateUndoRedoButtons();
+            updateAll();
         }
 
         function performRedo() {
             if (!redoSnapshot) return;
-            const next = redoSnapshot;
-            undoSnapshot = cloneState();
+            undoSnapshot = captureFullSnapshot();
+            restoreFullSnapshot(redoSnapshot);
             redoSnapshot = null;
             pendingSnapshot = null;
-            restoreState(next);
             updateUndoRedoButtons();
+            updateAll();
         }
 
         /* --- 1. Math & Color Space Conversions --- */
 
-        // Ensure angle interpolates shortest distance
+        // Shortest signed angular distance in degrees [-180, 180]
         function shortAngleDist(a, b) {
             let d = (b - a) % 360;
             if (d > 180) d -= 360;
@@ -435,9 +529,9 @@
             return d;
         }
 
-        // Cubic Bezier (1D)
+        // Cubic Bezier interpolation
         function bezier3(p0, p1, p2, p3, t) {
-            return (1 - t)**3 * p0 + 3 * (1 - t)**2 * t * p1 + 3 * (1 - t) * t**2 * p2 + t**3 * p3;
+            return (1 - t) ** 3 * p0 + 3 * (1 - t) ** 2 * t * p1 + 3 * (1 - t) * t ** 2 * p2 + t ** 3 * p3;
         }
 
         // Color Conversion Functions (OKlch <-> OKlab -> Linear sRGB -> sRGB -> Hex)
@@ -453,7 +547,7 @@
             return { l: L, c: c, h: h };
         }
 
-        // Evaluate segment 1 (Dark -> Mid) at parameter t [0, 1] using OKlab 3D cartesian coordinates
+        // Evaluate segment 1 (Dark -> Mid) at parameter t [0, 1] using OKlab 3D Cartesian coordinates
         function getPointAtT1(t, cfg = state) {
             let p0 = oklch_to_oklab(cfg.dark.l, cfg.dark.c, cfg.dark.h);
             let p1 = oklch_to_oklab(cfg.handles.d_out.l, cfg.handles.d_out.c, cfg.handles.d_out.h);
@@ -467,7 +561,7 @@
             return oklab_to_oklch(L, a, b);
         }
 
-        // Evaluate segment 2 (Mid -> Light) at parameter t [0, 1] using OKlab 3D cartesian coordinates
+        // Evaluate segment 2 (Mid -> Light) at parameter t [0, 1] using OKlab 3D Cartesian coordinates
         function getPointAtT2(t, cfg = state) {
             let p0 = oklch_to_oklab(cfg.mid.l, cfg.mid.c, cfg.mid.h);
             let p1 = oklch_to_oklab(cfg.handles.m_out.l, cfg.handles.m_out.c, cfg.handles.m_out.h);
@@ -481,11 +575,13 @@
             return oklab_to_oklch(L, a, b);
         }
 
-        // Euclidean distance in OKlab space
+        // Euclidean distance in OKlab / cylindrical OKlch space
         function dist(p1, p2) {
-            let lab1 = oklch_to_oklab(p1.l, p1.c, p1.h);
-            let lab2 = oklch_to_oklab(p2.l, p2.c, p2.h);
-            return Math.sqrt((lab2.L - lab1.L) ** 2 + (lab2.a - lab1.a) ** 2 + (lab2.b - lab1.b) ** 2);
+            let h1 = p1.h * Math.PI / 180;
+            let h2 = p2.h * Math.PI / 180;
+            let x1 = p1.c * Math.cos(h1), y1 = p1.c * Math.sin(h1);
+            let x2 = p2.c * Math.cos(h2), y2 = p2.c * Math.sin(h2);
+            return Math.sqrt((p2.l - p1.l) ** 2 + (x2 - x1) ** 2 + (y2 - y1) ** 2);
         }
 
         function oklab_to_linear_srgb(L, a, b) {
@@ -518,7 +614,7 @@
             return `#${r_h}${g_h}${b_h}`;
         }
 
-        // sRGB Hex -> OKlch (For color picker input syncing)
+        // sRGB Hex -> OKlch (For color picker & text input syncing)
         function hex_to_srgb(hex) {
             return {
                 r: parseInt(hex.substring(1, 3), 16) / 255,
@@ -546,24 +642,35 @@
             let rgb = hex_to_srgb(hex);
             let lr = srgb_to_linear(rgb.r), lg = srgb_to_linear(rgb.g), lb = srgb_to_linear(rgb.b);
             let lab = linear_srgb_to_oklab(lr, lg, lb);
-            return oklab_to_oklch(lab.L, lab.a, lab.b);
+            let C = Math.sqrt(lab.a ** 2 + lab.b ** 2);
+            let h = Math.atan2(lab.b, lab.a) * 180 / Math.PI;
+            if (h < 0) h += 360;
+            return { l: lab.L, c: Math.min(MAX_C, C), h: h };
         }
 
         /* --- 2. Curve Sampling & Palette Generation --- */
 
-        // Build data arrays of the curve by sampling evenly across parameter t
+        // Sample curve evenly across t and clamp chroma to maximal allowed value [0, MAX_C]
         function buildCurveData(getPointFn) {
             let pts = [];
             let totalLen = 0;
-            let lastPt = getPointFn(0);
-            lastPt.c = Math.max(0, Math.min(MAX_C, lastPt.c));
+            let rawFirst = getPointFn(0);
+            let lastPt = {
+                l: rawFirst.l,
+                c: Math.max(0, Math.min(MAX_C, rawFirst.c)),
+                h: rawFirst.h
+            };
             pts.push({ t: 0, l: lastPt.l, c: lastPt.c, h: lastPt.h, len: 0 });
-            
+
             const samples = 100;
             for (let i = 1; i <= samples; i++) {
                 let t = i / samples;
-                let pt = getPointFn(t);
-                pt.c = Math.max(0, Math.min(MAX_C, pt.c));
+                let rawPt = getPointFn(t);
+                let pt = {
+                    l: rawPt.l,
+                    c: Math.max(0, Math.min(MAX_C, rawPt.c)),
+                    h: rawPt.h
+                };
                 totalLen += dist(lastPt, pt);
                 pts.push({ t, l: pt.l, c: pt.c, h: pt.h, len: totalLen });
                 lastPt = pt;
@@ -571,16 +678,17 @@
             return { pts, totalLen };
         }
 
-        // Fetch interpolated position at an exact length distance along the curve
+        // Fetch interpolated position at an exact arc length along the curve
         function getPointAtLength(curveData, targetLen) {
             if (targetLen <= 0) return curveData.pts[0];
             if (targetLen >= curveData.totalLen) return curveData.pts[curveData.pts.length - 1];
-            
+
             for (let i = 0; i < curveData.pts.length - 1; i++) {
                 let p1 = curveData.pts[i];
                 let p2 = curveData.pts[i + 1];
                 if (targetLen >= p1.len && targetLen <= p2.len) {
-                    let ratio = (targetLen - p1.len) / (p2.len - p1.len);
+                    let span = p2.len - p1.len;
+                    let ratio = span > 0 ? (targetLen - p1.len) / span : 0;
                     return {
                         l: p1.l + ratio * (p2.l - p1.l),
                         c: p1.c + ratio * (p2.c - p1.c),
@@ -588,12 +696,13 @@
                     };
                 }
             }
+            return curveData.pts[curveData.pts.length - 1];
         }
 
-        // Logic for dispersing the color stops evenly, pinning the middle swatch to Mid Color
+        // Disperse color stops evenly in OKlch space, snapping the closest swatch to Middle Stop
         function generatePalette(cfg = state) {
             let n = cfg.steps;
-            if (n < 3) return [cfg.dark, cfg.light]; 
+            if (n < 3) return [cfg.dark, cfg.light];
 
             let d2m = buildCurveData(t => getPointAtT1(t, cfg));
             let m2l = buildCurveData(t => getPointAtT2(t, cfg));
@@ -602,22 +711,21 @@
             let totalLen = L1 + L2;
 
             let idealStep = totalLen / (n - 1);
-            let midIndex = Math.round(L1 / idealStep);
-            
-            // Constrain midIndex bounds so we have stops on both sides
+            let midIndex = idealStep > 0 ? Math.round(L1 / idealStep) : Math.floor((n - 1) / 2);
+
             if (midIndex <= 0) midIndex = 1;
             if (midIndex >= n - 1) midIndex = n - 2;
 
             let palette = [];
-            
-            // Distribute D to M
+
+            // Distribute Start -> Middle
             for (let i = 0; i <= midIndex; i++) {
                 if (i === 0) palette.push(cfg.dark);
                 else if (i === midIndex) palette.push(cfg.mid);
                 else palette.push(getPointAtLength(d2m, (i / midIndex) * L1));
             }
-            
-            // Distribute M to L
+
+            // Distribute Middle -> End
             let remaining = n - 1 - midIndex;
             for (let i = 1; i <= remaining; i++) {
                 if (i === remaining) palette.push(cfg.light);
@@ -626,10 +734,20 @@
             return palette;
         }
 
-
         /* --- 3. DOM & UI Management --- */
-        
-        // Initial Sidebar Generation
+
+        function normalizeHexInput(raw) {
+            if (!raw) return null;
+            let cleaned = raw.trim().replace(/^#/, '');
+            if (/^[0-9a-fA-F]{3}$/.test(cleaned)) {
+                cleaned = cleaned.split('').map(ch => ch + ch).join('');
+            }
+            if (/^[0-9a-fA-F]{6}$/.test(cleaned)) {
+                return `#${cleaned.toLowerCase()}`;
+            }
+            return null;
+        }
+
         function initSidebar() {
             const container = document.getElementById('color-inputs-container');
             const sections = [
@@ -638,13 +756,12 @@
                 { id: 'light', label: 'End Stop' }
             ];
 
+            const lockSvgOpen = `<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a5 5 0 00-5 5v2a2 2 0 00-2 2v5a2 2 0 002 2h10a2 2 0 002-2v-5a2 2 0 00-2-2H7V7a3 3 0 015.905-.75 1 1 0 001.937-.5A5.002 5.002 0 0010 2z"></path></svg>`;
+
             sections.forEach(sec => {
                 const el = document.createElement('div');
                 el.className = 'bg-slate-950 p-4 rounded-lg border border-slate-800 shadow-sm transition-opacity duration-200';
                 el.id = `section-${sec.id}`;
-                
-                const lockSvgClosed = `<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" fill-rule="evenodd"></path></svg>`;
-                const lockSvgOpen = `<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a5 5 0 00-5 5v2a2 2 0 00-2 2v5a2 2 0 002 2h10a2 2 0 002-2v-5a2 2 0 00-2-2H7V7a3 3 0 015.905-.75 1 1 0 001.937-.5A5.002 5.002 0 0010 2z"></path></svg>`;
 
                 el.innerHTML = `
                     <div class="flex items-center justify-between mb-3">
@@ -656,32 +773,32 @@
                                 <input type="color" id="hex-${sec.id}" class="w-8 h-8 p-0 border-0 bg-transparent cursor-pointer">
                                 <input type="text" id="text-${sec.id}" maxlength="7" spellcheck="false" class="w-20 bg-transparent text-xs text-center font-mono uppercase focus:outline-none focus:bg-slate-800 text-slate-300">
                             </div>
-                            <button id="lock-${sec.id}" class="text-slate-500 hover:text-white transition-colors p-1" title="Toggle Lock">
+                            <button id="lock-${sec.id}" type="button" class="text-slate-500 hover:text-white transition-colors p-1" title="Toggle Lock">
                                 <span id="lock-icon-${sec.id}">${lockSvgOpen}</span>
                             </button>
                         </div>
                     </div>
                     <div class="space-y-2">
-                        <div class="flex items-center gap-2.5">
+                        <div class="flex items-center gap-2">
                             <span class="w-3 text-xs text-slate-500">L</span>
-                            <input type="range" id="l-${sec.id}" min="0" max="1" step="0.01" class="w-full color-slider">
-                            <input type="number" id="val-l-${sec.id}" min="0" max="1" step="0.01" class="w-16 shrink-0 bg-slate-900 border border-slate-700 rounded text-center text-xs focus:outline-none focus:border-blue-500 text-slate-200 font-mono py-1">
+                            <input type="range" id="l-${sec.id}" min="0" max="1" step="0.01" class="flex-1 min-w-0 color-slider">
+                            <input type="number" id="val-l-${sec.id}" min="0" max="1" step="0.01" class="w-16 bg-slate-900 border border-slate-700 rounded text-right text-xs text-slate-200 font-mono px-1.5 py-0.5 focus:outline-none focus:border-blue-500">
                         </div>
-                        <div class="flex items-center gap-2.5">
+                        <div class="flex items-center gap-2">
                             <span class="w-3 text-xs text-slate-500">C</span>
-                            <input type="range" id="c-${sec.id}" min="0" max="0.4" step="0.005" class="w-full color-slider">
-                            <input type="number" id="val-c-${sec.id}" min="0" max="0.4" step="0.001" class="w-16 shrink-0 bg-slate-900 border border-slate-700 rounded text-center text-xs focus:outline-none focus:border-blue-500 text-slate-200 font-mono py-1">
+                            <input type="range" id="c-${sec.id}" min="0" max="0.4" step="0.005" class="flex-1 min-w-0 color-slider">
+                            <input type="number" id="val-c-${sec.id}" min="0" max="0.4" step="0.005" class="w-16 bg-slate-900 border border-slate-700 rounded text-right text-xs text-slate-200 font-mono px-1.5 py-0.5 focus:outline-none focus:border-blue-500">
                         </div>
-                        <div class="flex items-center gap-2.5">
+                        <div class="flex items-center gap-2">
                             <span class="w-3 text-xs text-slate-500">H</span>
-                            <input type="range" id="h-${sec.id}" min="0" max="360" step="1" class="w-full color-slider">
-                            <input type="number" id="val-h-${sec.id}" min="0" max="360" step="1" class="w-16 shrink-0 bg-slate-900 border border-slate-700 rounded text-center text-xs focus:outline-none focus:border-blue-500 text-slate-200 font-mono py-1">
+                            <input type="range" id="h-${sec.id}" min="0" max="360" step="1" class="flex-1 min-w-0 color-slider">
+                            <input type="number" id="val-h-${sec.id}" min="0" max="360" step="1" class="w-16 bg-slate-900 border border-slate-700 rounded text-right text-xs text-slate-200 font-mono px-1.5 py-0.5 focus:outline-none focus:border-blue-500">
                         </div>
                     </div>
                 `;
                 container.appendChild(el);
 
-                // Bind lock toggle
+                // Lock toggle
                 document.getElementById(`lock-${sec.id}`).addEventListener('click', () => {
                     recordImmediateUndo();
                     state.locked[sec.id] = !state.locked[sec.id];
@@ -689,146 +806,82 @@
                 });
             });
 
-            // Bind Events
+            // Bind stop sliders, numerical inputs, color pickers, and hex text fields
             keys.forEach(k => {
                 ['l', 'c', 'h'].forEach(prop => {
-                    const slider = document.getElementById(`${prop}-${k}`);
-                    slider.addEventListener('mousedown', () => { if (!state.locked[k]) beginPendingUndo(); });
-                    slider.addEventListener('touchstart', () => { if (!state.locked[k]) beginPendingUndo(); }, { passive: true });
-                    slider.addEventListener('keydown', () => { if (!state.locked[k]) beginPendingUndo(); });
-                    slider.addEventListener('input', (e) => {
+                    const sliderEl = document.getElementById(`${prop}-${k}`);
+                    const numEl = document.getElementById(`val-${prop}-${k}`);
+
+                    sliderEl.addEventListener('mousedown', () => { if (!state.locked[k]) beginPendingUndo(); });
+                    sliderEl.addEventListener('touchstart', () => { if (!state.locked[k]) beginPendingUndo(); }, { passive: true });
+                    sliderEl.addEventListener('input', (e) => {
                         if (state.locked[k]) return;
                         beginPendingUndo();
                         state[k][prop] = parseFloat(e.target.value);
                         updateAll();
                     });
-                    slider.addEventListener('change', () => commitPendingUndo());
-                    slider.addEventListener('mouseup', () => commitPendingUndo());
-                    slider.addEventListener('touchend', () => commitPendingUndo());
-                    slider.addEventListener('keyup', () => commitPendingUndo());
+                    sliderEl.addEventListener('change', commitPendingUndo);
+                    sliderEl.addEventListener('mouseup', commitPendingUndo);
+                    sliderEl.addEventListener('touchend', commitPendingUndo);
 
-                    // Synchronized numerical input field next to each slider
-                    const numInput = document.getElementById(`val-${prop}-${k}`);
-                    numInput.addEventListener('focus', (e) => {
+                    numEl.addEventListener('focus', () => { if (!state.locked[k]) beginPendingUndo(); });
+                    numEl.addEventListener('input', (e) => {
                         if (state.locked[k]) return;
-                        beginPendingUndo();
-                        e.target.select();
-                    });
-                    numInput.addEventListener('input', (e) => {
-                        if (state.locked[k]) return;
-                        beginPendingUndo();
-                        let v = parseFloat(e.target.value);
-                        if (Number.isNaN(v)) return;
-                        if (prop === 'l') v = Math.max(0, Math.min(1, v));
-                        else if (prop === 'c') v = Math.max(0, Math.min(MAX_C, v));
-                        else if (prop === 'h') {
-                            if (v < 0 || v > 360) v = ((v % 360) + 360) % 360;
-                        }
-                        state[k][prop] = v;
+                        let val = parseFloat(e.target.value);
+                        if (Number.isNaN(val)) return;
+                        if (prop === 'l') val = Math.max(0, Math.min(1, val));
+                        else if (prop === 'c') val = Math.max(0, Math.min(MAX_C, val));
+                        else if (prop === 'h') val = ((val % 360) + 360) % 360;
+                        state[k][prop] = val;
                         updateAll(`val-${prop}-${k}`);
                     });
-                    numInput.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter') {
-                            e.preventDefault();
-                            e.target.blur();
-                        } else if (e.key === 'Escape') {
-                            e.preventDefault();
-                            if (pendingSnapshot) {
-                                restoreState(pendingSnapshot);
-                                pendingSnapshot = null;
-                            }
-                            e.target.blur();
-                        }
-                    });
-                    numInput.addEventListener('change', () => {
+                    numEl.addEventListener('blur', () => {
                         commitPendingUndo();
-                        syncSidebar();
+                        updateAll();
                     });
-                    numInput.addEventListener('blur', () => {
-                        commitPendingUndo();
-                        syncSidebar();
+                    numEl.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') e.target.blur();
                     });
                 });
 
-                const colorInput = document.getElementById(`hex-${k}`);
-                colorInput.addEventListener('focus', () => { if (!state.locked[k]) beginPendingUndo(); });
-                colorInput.addEventListener('click', () => { if (!state.locked[k]) beginPendingUndo(); });
-                colorInput.addEventListener('input', (e) => {
+                const hexPicker = document.getElementById(`hex-${k}`);
+                hexPicker.addEventListener('mousedown', () => { if (!state.locked[k]) beginPendingUndo(); });
+                hexPicker.addEventListener('touchstart', () => { if (!state.locked[k]) beginPendingUndo(); }, { passive: true });
+                hexPicker.addEventListener('input', (e) => {
                     if (state.locked[k]) return;
                     beginPendingUndo();
                     let parsed = hex_to_oklch(e.target.value);
-                    state[k].l = parsed.l; state[k].c = parsed.c; state[k].h = parsed.h;
+                    state[k].l = parsed.l;
+                    state[k].c = parsed.c;
+                    state[k].h = parsed.h;
                     updateAll();
                 });
-                colorInput.addEventListener('change', () => commitPendingUndo());
-                colorInput.addEventListener('blur', () => commitPendingUndo());
+                hexPicker.addEventListener('change', commitPendingUndo);
 
-                // Editable Hex text input: updates preview on valid 6-digit hex, commits single undo on submit
-                const textInput = document.getElementById(`text-${k}`);
-                textInput.addEventListener('focus', (e) => {
-                    if (state.locked[k]) return;
-                    beginPendingUndo();
-                    e.target.select();
+                const hexText = document.getElementById(`text-${k}`);
+                hexText.addEventListener('focus', () => { if (!state.locked[k]) beginPendingUndo(); });
+                hexText.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.target.blur();
+                    }
                 });
-                textInput.addEventListener('input', (e) => {
+                hexText.addEventListener('blur', (e) => {
                     if (state.locked[k]) return;
-                    const raw = e.target.value.trim();
-                    if (/^#?[0-9a-fA-F]{6}$/.test(raw)) {
-                        const normalized = raw.startsWith('#') ? raw : `#${raw}`;
+                    const normalized = normalizeHexInput(e.target.value);
+                    if (normalized) {
                         const parsed = hex_to_oklch(normalized);
                         state[k].l = parsed.l;
                         state[k].c = parsed.c;
                         state[k].h = parsed.h;
-                        updateAll(`text-${k}`);
+                        commitPendingUndo();
+                    } else {
+                        pendingSnapshot = null;
                     }
-                });
-                textInput.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        e.target.blur();
-                    } else if (e.key === 'Escape') {
-                        e.preventDefault();
-                        if (pendingSnapshot) {
-                            restoreState(pendingSnapshot);
-                            pendingSnapshot = null;
-                        }
-                        e.target.blur();
-                    }
-                });
-                textInput.addEventListener('blur', () => {
-                    commitPendingUndo();
-                    syncSidebar();
+                    updateAll();
                 });
             });
 
-            const stepsRange = document.getElementById('steps');
-            const stepsNum = document.getElementById('steps-num');
-            
-            stepsRange.addEventListener('mousedown', () => beginPendingUndo());
-            stepsRange.addEventListener('touchstart', () => beginPendingUndo(), { passive: true });
-            stepsRange.addEventListener('input', (e) => {
-                beginPendingUndo();
-                state.steps = parseInt(e.target.value);
-                stepsNum.value = state.steps;
-                updateAll();
-            });
-            stepsRange.addEventListener('change', () => commitPendingUndo());
-            stepsRange.addEventListener('mouseup', () => commitPendingUndo());
-            stepsRange.addEventListener('touchend', () => commitPendingUndo());
-
-            stepsNum.addEventListener('focus', () => beginPendingUndo());
-            stepsNum.addEventListener('input', (e) => {
-                beginPendingUndo();
-                let v = parseInt(e.target.value);
-                if(isNaN(v) || v < 3) v = 3;
-                if(v > 256) v = 256;
-                state.steps = v;
-                stepsRange.value = v;
-                updateAll();
-            });
-            stepsNum.addEventListener('change', () => commitPendingUndo());
-            stepsNum.addEventListener('blur', () => commitPendingUndo());
-
+            // Export / Import buttons
             document.getElementById('export-clrs-btn').addEventListener('click', exportInfinitePainterClrs);
             document.getElementById('export-json-btn').addEventListener('click', exportConfigurationJson);
 
@@ -839,9 +892,8 @@
                 importJsonInput.click();
             });
             importJsonInput.addEventListener('change', (e) => {
-                if (e.target.files && e.target.files[0]) {
-                    importConfigurationJson(e.target.files[0]);
-                }
+                const file = e.target.files && e.target.files[0];
+                if (file) importConfigurationJson(file);
             });
 
             // Undo / Redo buttons & keyboard shortcuts
@@ -850,6 +902,11 @@
             window.addEventListener('keydown', (e) => {
                 const tag = document.activeElement?.tagName;
                 if (tag === 'INPUT' && (document.activeElement.type === 'text' || document.activeElement.type === 'number')) {
+                    return;
+                }
+                if (e.key === 'Escape' && uiState.expandedEditor) {
+                    e.preventDefault();
+                    setExpandedEditor(null);
                     return;
                 }
                 if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
@@ -862,41 +919,79 @@
                 }
             });
 
-            // Reflection / Inversion buttons
-            function getAllNodes() {
-                return [
-                    state.dark, state.mid, state.light,
-                    state.handles.d_out, state.handles.m_in, state.handles.m_out, state.handles.l_in
-                ];
+            // Gamut preview toggle switches (off by default)
+            const gamutToggleLC = document.getElementById('gamut-toggle-lc');
+            const gamutToggleHC = document.getElementById('gamut-toggle-hc');
+            gamutToggleLC.checked = uiState.showGamutLC;
+            gamutToggleHC.checked = uiState.showGamutHC;
+
+            gamutToggleLC.addEventListener('change', (e) => {
+                uiState.showGamutLC = e.target.checked;
+                renderLCBackground();
+            });
+            gamutToggleHC.addEventListener('change', (e) => {
+                uiState.showGamutHC = e.target.checked;
+                renderHCBackground();
+            });
+
+            // Expand / Collapse buttons for each visual editor
+            document.getElementById('expand-lc-btn').addEventListener('click', () => {
+                setExpandedEditor(uiState.expandedEditor === 'LC' ? null : 'LC');
+            });
+            document.getElementById('expand-hc-btn').addEventListener('click', () => {
+                setExpandedEditor(uiState.expandedEditor === 'HC' ? null : 'HC');
+            });
+
+            // Reflection / Inversion buttons (respects locked stops and their handles)
+            function getUnlockedNodes() {
+                const nodes = [];
+                if (!state.locked.dark) {
+                    nodes.push(state.dark, state.handles.d_out);
+                }
+                if (!state.locked.mid) {
+                    nodes.push(state.mid, state.handles.m_in, state.handles.m_out);
+                }
+                if (!state.locked.light) {
+                    nodes.push(state.light, state.handles.l_in);
+                }
+                return nodes;
             }
 
             document.getElementById('reflect-lc-l').addEventListener('click', () => {
+                const nodes = getUnlockedNodes();
+                if (nodes.length === 0) return;
                 recordImmediateUndo();
-                getAllNodes().forEach(p => {
+                nodes.forEach(p => {
                     p.l = Math.max(0, Math.min(1, 1 - p.l));
                 });
                 updateAll();
             });
 
             document.getElementById('reflect-lc-c').addEventListener('click', () => {
+                const nodes = getUnlockedNodes();
+                if (nodes.length === 0) return;
                 recordImmediateUndo();
-                getAllNodes().forEach(p => {
+                nodes.forEach(p => {
                     p.c = Math.max(0, Math.min(MAX_C, 0.4 - p.c));
                 });
                 updateAll();
             });
 
             document.getElementById('reflect-hc-h').addEventListener('click', () => {
+                const nodes = getUnlockedNodes();
+                if (nodes.length === 0) return;
                 recordImmediateUndo();
-                getAllNodes().forEach(p => {
+                nodes.forEach(p => {
                     p.h = ((360 - p.h) % 360 + 360) % 360;
                 });
                 updateAll();
             });
 
             document.getElementById('reflect-hc-c').addEventListener('click', () => {
+                const nodes = getUnlockedNodes();
+                if (nodes.length === 0) return;
                 recordImmediateUndo();
-                getAllNodes().forEach(p => {
+                nodes.forEach(p => {
                     p.c = Math.max(0, Math.min(MAX_C, 0.4 - p.c));
                 });
                 updateAll();
@@ -1056,7 +1151,7 @@
                     state = appState.palettes[appState.activeIndex];
                     updateAll();
                 } catch (err) {
-                    alert(`Failed to import JSON configuration: ${err.message}`);
+                    showToast(`Failed to import JSON configuration: ${err.message}`);
                 }
             };
             reader.readAsText(file);
@@ -1108,8 +1203,6 @@
                 }
                 document.getElementById(`h-${k}`).style.background = `linear-gradient(to right, ${hGrad.join(', ')})`;
             });
-            document.getElementById('steps').value = state.steps;
-            document.getElementById('steps-num').value = state.steps;
         }
 
         // Coordinates Mapping to SVG dimensions (300x300 canvas)
@@ -1142,36 +1235,85 @@
             document.getElementById('hc-grid').innerHTML = gridHC;
         }
 
-        function initHCBackground() {
+        const EXPAND_ICON_PATH = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>`;
+        const COLLAPSE_ICON_PATH = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9V4m0 5H4m5 0L3 3m12 6V4m0 5h5m-5 0l6-6M9 15v5m0-5H4m5 0l-6 6m12-6v5m0-5h5m-5 0l6 6"></path>`;
+
+        function setExpandedEditor(editor) {
+            uiState.expandedEditor = editor;
+
+            const configs = [
+                { key: 'LC', cardId: 'card-lc', iconId: 'expand-lc-icon', labelId: 'expand-lc-label', btnId: 'expand-lc-btn' },
+                { key: 'HC', cardId: 'card-hc', iconId: 'expand-hc-icon', labelId: 'expand-hc-label', btnId: 'expand-hc-btn' }
+            ];
+
+            configs.forEach(c => {
+                const isExp = editor === c.key;
+                const cardEl = document.getElementById(c.cardId);
+                const iconEl = document.getElementById(c.iconId);
+                const labelEl = document.getElementById(c.labelId);
+                const btnEl = document.getElementById(c.btnId);
+
+                cardEl.classList.toggle('is-expanded', isExp);
+                iconEl.innerHTML = isExp ? COLLAPSE_ICON_PATH : EXPAND_ICON_PATH;
+                labelEl.textContent = isExp ? 'Collapse' : 'Expand';
+                btnEl.title = isExp ? 'Exit full viewport mode (Esc)' : 'Expand editor to full viewport';
+            });
+
+            // Lock background scroll on narrow screens while an editor is expanded
+            document.body.classList.toggle('overflow-hidden', Boolean(editor));
+
+            // Re-render background canvases at higher resolution when expanded for sharp gamut edges
+            cachedMidHue = null;
+            cachedLCGamut = null;
+            cachedLCSize = null;
+            cachedHCGamut = null;
+            cachedHCSize = null;
+            renderLCBackground();
+            renderHCBackground();
+        }
+
+        let cachedHCGamut = null;
+        let cachedHCSize = null;
+        function renderHCBackground() {
             // HC Background - Radial distance = chroma, Angle = Hue (Lightness locked at 0.5).
-            // Areas outside the sRGB gamut are overlaid with black at 50% opacity.
-            // Rendered only once since it doesn't depend on dynamically changing parameters.
-            const hcCtx = document.getElementById('bg-hc').getContext('2d');
-            const hcImg = hcCtx.createImageData(300, 300);
+            // When Gamut preview is enabled, areas outside the sRGB gamut are overlaid with black at 50% opacity.
+            const size = uiState.expandedEditor === 'HC' ? 540 : 300;
+            if (cachedHCGamut === uiState.showGamutHC && cachedHCSize === size) return;
+            cachedHCGamut = uiState.showGamutHC;
+            cachedHCSize = size;
+
+            const hcCanvas = document.getElementById('bg-hc');
+            hcCanvas.width = size;
+            hcCanvas.height = size;
+            const hcCtx = hcCanvas.getContext('2d');
+            const hcImg = hcCtx.createImageData(size, size);
+            const half = size / 2;
             const eps = 1e-6;
             const outOfGamutScale = 70 / 325; // Equivalent to compositing rgba(0, 0, 0, 0.5) over alpha 70/255
 
-            for (let y = 0; y < 300; y++) {
-                for (let x = 0; x < 300; x++) {
-                    let dx = x - 150;
-                    let dy = 150 - y;
+            for (let y = 0; y < size; y++) {
+                for (let x = 0; x < size; x++) {
+                    let dx = x - half;
+                    let dy = half - y;
                     let r = Math.sqrt(dx * dx + dy * dy);
-                    if (r > 150) continue;
+                    if (r > half) continue;
 
-                    let c = (r / 150) * MAX_C;
+                    let c = (r / half) * MAX_C;
                     let cosH = r > 0 ? dx / r : 1;
                     let sinH = r > 0 ? dy / r : 0;
                     let lin = oklab_to_linear_srgb(0.5, c * cosH, c * sinH);
 
-                    let inGamut = lin.r >= -eps && lin.r <= 1 + eps &&
-                                  lin.g >= -eps && lin.g <= 1 + eps &&
-                                  lin.b >= -eps && lin.b <= 1 + eps;
+                    let inGamut = !uiState.showGamutHC || (
+                        lin.r >= -eps && lin.r <= 1 + eps &&
+                        lin.g >= -eps && lin.g <= 1 + eps &&
+                        lin.b >= -eps && lin.b <= 1 + eps
+                    );
 
                     let sr = Math.max(0, Math.min(1, linear_srgb_to_srgb(Math.max(0, Math.min(1, lin.r))))) * 255;
                     let sg = Math.max(0, Math.min(1, linear_srgb_to_srgb(Math.max(0, Math.min(1, lin.g))))) * 255;
                     let sb = Math.max(0, Math.min(1, linear_srgb_to_srgb(Math.max(0, Math.min(1, lin.b))))) * 255;
 
-                    let idx = (y * 300 + x) * 4;
+                    let idx = (y * size + x) * 4;
                     if (inGamut) {
                         hcImg.data[idx] = sr;
                         hcImg.data[idx + 1] = sg;
@@ -1189,35 +1331,45 @@
         }
 
         let cachedMidHue = null;
+        let cachedLCGamut = null;
+        let cachedLCSize = null;
         function renderLCBackground() {
             // LC Background - Lightness changes vertically, hue syncs with middle stop.
-            // Areas outside the sRGB gamut at the middle stop's hue are overlaid with black at 50% opacity.
-            if (cachedMidHue === state.mid.h) return;
+            // When Gamut preview is enabled, areas outside the sRGB gamut at the middle stop's hue are overlaid with black at 50% opacity.
+            const size = uiState.expandedEditor === 'LC' ? 540 : 300;
+            if (cachedMidHue === state.mid.h && cachedLCGamut === uiState.showGamutLC && cachedLCSize === size) return;
             cachedMidHue = state.mid.h;
+            cachedLCGamut = uiState.showGamutLC;
+            cachedLCSize = size;
 
-            const lcCtx = document.getElementById('bg-lc').getContext('2d');
-            const lcImg = lcCtx.createImageData(300, 300);
+            const lcCanvas = document.getElementById('bg-lc');
+            lcCanvas.width = size;
+            lcCanvas.height = size;
+            const lcCtx = lcCanvas.getContext('2d');
+            const lcImg = lcCtx.createImageData(size, size);
             let hRad = state.mid.h * Math.PI / 180;
             let cosH = Math.cos(hRad);
             let sinH = Math.sin(hRad);
             const eps = 1e-6;
             const outOfGamutScale = 70 / 325; // Equivalent to compositing rgba(0, 0, 0, 0.5) over alpha 70/255
             
-            for (let y = 0; y < 300; y++) {
-                let l = 1 - (y / 300);
-                for (let x = 0; x < 300; x++) {
-                    let c = (x / 300) * MAX_C;
+            for (let y = 0; y < size; y++) {
+                let l = 1 - (y / size);
+                for (let x = 0; x < size; x++) {
+                    let c = (x / size) * MAX_C;
                     let lin = oklab_to_linear_srgb(l, c * cosH, c * sinH);
 
-                    let inGamut = lin.r >= -eps && lin.r <= 1 + eps &&
-                                  lin.g >= -eps && lin.g <= 1 + eps &&
-                                  lin.b >= -eps && lin.b <= 1 + eps;
+                    let inGamut = !uiState.showGamutLC || (
+                        lin.r >= -eps && lin.r <= 1 + eps &&
+                        lin.g >= -eps && lin.g <= 1 + eps &&
+                        lin.b >= -eps && lin.b <= 1 + eps
+                    );
 
                     let sr = Math.max(0, Math.min(1, linear_srgb_to_srgb(Math.max(0, Math.min(1, lin.r))))) * 255;
                     let sg = Math.max(0, Math.min(1, linear_srgb_to_srgb(Math.max(0, Math.min(1, lin.g))))) * 255;
                     let sb = Math.max(0, Math.min(1, linear_srgb_to_srgb(Math.max(0, Math.min(1, lin.b))))) * 255;
 
-                    let idx = (y * 300 + x) * 4;
+                    let idx = (y * size + x) * 4;
                     if (inGamut) {
                         lcImg.data[idx] = sr;
                         lcImg.data[idx + 1] = sg;
@@ -1277,10 +1429,10 @@
                     const hx = mapHC_X(pt.c, pt.h);
                     const hy = mapHC_Y(pt.c, pt.h);
 
-                    lcStopsHtml += `<circle cx="${lx}" cy="${ly}" r="7" fill="#f8fafc" stroke="#0f172a" stroke-width="2" />` +
-                                   `<circle cx="${lx}" cy="${ly}" r="3.5" fill="${hex}" />`;
-                    hcStopsHtml += `<circle cx="${hx}" cy="${hy}" r="7" fill="#f8fafc" stroke="#0f172a" stroke-width="2" />` +
-                                   `<circle cx="${hx}" cy="${hy}" r="3.5" fill="${hex}" />`;
+                    lcStopsHtml += `<circle cx="${lx}" cy="${ly}" class="ghost-main-point" />` +
+                                   `<circle cx="${lx}" cy="${ly}" class="ghost-inner-point" fill="${hex}" />`;
+                    hcStopsHtml += `<circle cx="${hx}" cy="${hy}" class="ghost-main-point" />` +
+                                   `<circle cx="${hx}" cy="${hy}" class="ghost-inner-point" fill="${hex}" />`;
                 });
 
                 lcGhostHtml += `<g opacity="0.25"><path d="${lcD1}" class="curve-1" /><path d="${lcD2}" class="curve-2" />${lcStopsHtml}</g>`;
@@ -1293,7 +1445,7 @@
             let d2m = buildCurveData(getPointAtT1).pts;
             let m2l = buildCurveData(getPointAtT2).pts;
 
-            // L-C Paths - now perfectly following the OKlab evaluated points
+            // L-C Paths - following the OKlab evaluated points
             document.getElementById('lc-curve-1').setAttribute('d', getPolyline(d2m, p => mapLC_X(p.c), p => mapLC_Y(p.l)));
             document.getElementById('lc-curve-2').setAttribute('d', getPolyline(m2l, p => mapLC_X(p.c), p => mapLC_Y(p.l)));
 
@@ -1331,6 +1483,24 @@
             setPt('hc-h-m-out', mapHC_X(state.handles.m_out.c, state.handles.m_out.h), mapHC_Y(state.handles.m_out.c, state.handles.m_out.h));
             setPt('hc-h-l-in', mapHC_X(state.handles.l_in.c, state.handles.l_in.h), mapHC_Y(state.handles.l_in.c, state.handles.l_in.h));
 
+            // Reflect lock state visually on stop points and their handles
+            document.getElementById('lc-d').classList.toggle('is-locked', state.locked.dark);
+            document.getElementById('hc-d').classList.toggle('is-locked', state.locked.dark);
+            document.getElementById('lc-h-d-out').classList.toggle('is-locked', state.locked.dark);
+            document.getElementById('hc-h-d-out').classList.toggle('is-locked', state.locked.dark);
+
+            document.getElementById('lc-m').classList.toggle('is-locked', state.locked.mid);
+            document.getElementById('hc-m').classList.toggle('is-locked', state.locked.mid);
+            document.getElementById('lc-h-m-in').classList.toggle('is-locked', state.locked.mid);
+            document.getElementById('hc-h-m-in').classList.toggle('is-locked', state.locked.mid);
+            document.getElementById('lc-h-m-out').classList.toggle('is-locked', state.locked.mid);
+            document.getElementById('hc-h-m-out').classList.toggle('is-locked', state.locked.mid);
+
+            document.getElementById('lc-l').classList.toggle('is-locked', state.locked.light);
+            document.getElementById('hc-l').classList.toggle('is-locked', state.locked.light);
+            document.getElementById('lc-h-l-in').classList.toggle('is-locked', state.locked.light);
+            document.getElementById('hc-h-l-in').classList.toggle('is-locked', state.locked.light);
+
             // Inner Nodes Colors
             ['d', 'm', 'l'].forEach(k => {
                 let pt = state[k === 'd' ? 'dark' : (k === 'm' ? 'mid' : 'light')];
@@ -1346,12 +1516,17 @@
         function initInteractions() {
             const svgLC = document.getElementById('svg-lc');
             const svgHC = document.getElementById('svg-hc');
+
+            function isTargetLocked(targetType, targetKey) {
+                if (targetType === 'point') return Boolean(state.locked[targetKey]);
+                if (targetType === 'handle') return isHandleLocked(targetKey);
+                return false;
+            }
             
             function register(id, space, targetType, targetKey) {
                 document.getElementById(id).addEventListener('mousedown', (e) => {
                     e.stopPropagation();
-                    let k = targetType === 'point' ? targetKey : null;
-                    if (k && state.locked[k]) return; // Block drag if locked
+                    if (isTargetLocked(targetType, targetKey)) return; // Block drag if stop or its handles are locked
                     
                     dragging = { type: targetType, key: targetKey };
                     dragSpace = space;
@@ -1360,8 +1535,7 @@
                 });
                 document.getElementById(id).addEventListener('touchstart', (e) => {
                     e.stopPropagation();
-                    let k = targetType === 'point' ? targetKey : null;
-                    if (k && state.locked[k]) return;
+                    if (isTargetLocked(targetType, targetKey)) return;
                     
                     dragging = { type: targetType, key: targetKey };
                     dragSpace = space;
@@ -1446,8 +1620,10 @@
                     });
 
                     ['d_out', 'm_in', 'm_out', 'l_in'].forEach(hk => {
-                        state.handles[hk].l = Math.max(0, Math.min(1, bgStartState.handles[hk].l + dL));
-                        state.handles[hk].c = Math.max(0, Math.min(MAX_C, bgStartState.handles[hk].c + dC));
+                        if (!isHandleLocked(hk, bgStartState)) {
+                            state.handles[hk].l = Math.max(0, Math.min(1, bgStartState.handles[hk].l + dL));
+                            state.handles[hk].c = Math.max(0, Math.min(MAX_C, bgStartState.handles[hk].c + dC));
+                        }
                     });
                 } else {
                     const dx0 = bgStartLoc.x - H;
@@ -1483,8 +1659,10 @@
                     });
 
                     ['d_out', 'm_in', 'm_out', 'l_in'].forEach(hk => {
-                        state.handles[hk].c = Math.max(0, Math.min(MAX_C, bgStartState.handles[hk].c + dC));
-                        state.handles[hk].h = ((bgStartState.handles[hk].h + dH) % 360 + 360) % 360;
+                        if (!isHandleLocked(hk, bgStartState)) {
+                            state.handles[hk].c = Math.max(0, Math.min(MAX_C, bgStartState.handles[hk].c + dC));
+                            state.handles[hk].h = ((bgStartState.handles[hk].h + dH) % 360 + 360) % 360;
+                        }
                     });
                 }
 
@@ -1613,9 +1791,118 @@
             });
         }
 
-        // Render all palette rows in the footer
-        function renderAllPaletteRows(activePalette) {
+        function copyHexToClipboard(hex, swatchEl) {
+            const upperHex = hex.toUpperCase();
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(upperHex).catch(() => fallbackCopyText(upperHex));
+            } else {
+                fallbackCopyText(upperHex);
+            }
+            if (swatchEl) {
+                showSwatchCopiedBadge(swatchEl);
+            }
+        }
+
+        function fallbackCopyText(text) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.setAttribute('readonly', '');
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand('copy'); } catch (_) {}
+            document.body.removeChild(ta);
+        }
+
+        function showSwatchCopiedBadge(swatchEl) {
+            const boxEl = swatchEl.querySelector('.swatch-color-box') || swatchEl;
+            const existing = boxEl.querySelector('.copied-badge');
+            if (existing) existing.remove();
+
+            const badge = document.createElement('div');
+            badge.className = 'copied-badge absolute inset-0 flex items-center justify-center bg-slate-950/85 text-white text-[9px] font-semibold leading-tight text-center px-1 rounded-lg pointer-events-none transition-opacity duration-200';
+            badge.textContent = 'Copied to clipboard';
+            boxEl.appendChild(badge);
+
+            setTimeout(() => {
+                badge.style.opacity = '0';
+                setTimeout(() => badge.remove(), 200);
+            }, 1000);
+        }
+
+        let lastRenderedPaletteCount = -1;
+        let lastRenderedActiveIndex = -1;
+
+        function buildSwatchesStrip(swatchesEl, palette, cfg, rowIndex) {
+            swatchesEl.innerHTML = '';
+            palette.forEach((p, i) => {
+                const hex = oklch_to_hex(p.l, p.c, p.h);
+                const swatch = document.createElement('div');
+                swatch.className = 'flex flex-col items-center gap-1 shrink-0 snap-center transition-transform hover:-translate-y-1 cursor-pointer group';
+                swatch.title = `Click to copy ${hex.toUpperCase()}`;
+
+                let label = '';
+                if (i === 0) label = 'Start';
+                else if (i === palette.length - 1) label = 'End';
+                else if (p === cfg.mid) label = 'Middle';
+                else label = `Stop ${i + 1}`;
+
+                swatch.innerHTML = `
+                    <div class="swatch-color-box relative w-12 h-12 sm:w-16 sm:h-14 rounded-lg shadow border border-white/10 group-hover:ring-2 group-hover:ring-white/40 transition-shadow overflow-hidden" style="background-color: ${hex}"></div>
+                    <span class="text-[10px] font-mono text-slate-300 group-hover:text-white uppercase">${hex}</span>
+                    <span class="text-[9px] text-slate-500 font-bold tracking-wider uppercase">${label}</span>
+                `;
+
+                swatch.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (rowIndex !== appState.activeIndex) {
+                        selectPaletteRow(rowIndex);
+                        const activeRow = document.querySelector(`[data-palette-row="${rowIndex}"]`);
+                        const newSwatch = activeRow ? activeRow.querySelectorAll('.group')[i] : null;
+                        copyHexToClipboard(hex, newSwatch);
+                    } else {
+                        copyHexToClipboard(hex, swatch);
+                    }
+                });
+
+                swatchesEl.appendChild(swatch);
+            });
+        }
+
+        // Render all palette rows in the footer (preserves active Color Stops slider DOM during drag/typing)
+        function renderAllPaletteRows(activePalette, skipStepsInput = false) {
             const listContainer = document.getElementById('palettes-list');
+            const structureChanged =
+                lastRenderedPaletteCount !== appState.palettes.length ||
+                lastRenderedActiveIndex !== appState.activeIndex ||
+                listContainer.children.length !== appState.palettes.length;
+
+            if (!structureChanged) {
+                appState.palettes.forEach((cfg, rowIndex) => {
+                    const isSelected = rowIndex === appState.activeIndex;
+                    const palette = isSelected ? activePalette : generatePalette(cfg);
+                    const rowEl = listContainer.children[rowIndex];
+                    const badgeCountEl = rowEl.querySelector('.row-steps-count');
+                    if (badgeCountEl) badgeCountEl.textContent = cfg.steps;
+
+                    if (isSelected) {
+                        const sliderEl = rowEl.querySelector('.active-steps-slider');
+                        const numEl = rowEl.querySelector('.active-steps-num');
+                        if (sliderEl) sliderEl.value = cfg.steps;
+                        if (numEl && !skipStepsInput) numEl.value = cfg.steps;
+                    }
+
+                    const swatchesEl = rowEl.querySelector('.swatches-strip');
+                    if (swatchesEl) {
+                        buildSwatchesStrip(swatchesEl, palette, cfg, rowIndex);
+                    }
+                });
+                return;
+            }
+
+            lastRenderedPaletteCount = appState.palettes.length;
+            lastRenderedActiveIndex = appState.activeIndex;
             listContainer.innerHTML = '';
 
             appState.palettes.forEach((cfg, rowIndex) => {
@@ -1623,12 +1910,69 @@
                 const palette = isSelected ? activePalette : generatePalette(cfg);
 
                 const rowEl = document.createElement('div');
-                rowEl.className = `flex items-center gap-2.5 sm:gap-3 p-2.5 rounded-xl border transition-all cursor-pointer min-w-0 ${
+                rowEl.dataset.paletteRow = String(rowIndex);
+                rowEl.className = `flex flex-col gap-2.5 p-2.5 rounded-xl border transition-all cursor-pointer min-w-0 ${
                     isSelected
                         ? 'bg-slate-800/80 border-blue-400/70 ring-1 ring-blue-400/30 shadow-md'
                         : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 hover:bg-slate-800/40 opacity-85 hover:opacity-100'
                 }`;
                 rowEl.addEventListener('click', () => selectPaletteRow(rowIndex));
+
+                // Display Color Stops slider inside the active palette card only
+                if (isSelected) {
+                    const stopsBar = document.createElement('div');
+                    stopsBar.className = 'flex items-center gap-3 pb-1.5 border-b border-slate-700/60 cursor-default';
+                    stopsBar.addEventListener('click', (e) => e.stopPropagation());
+                    stopsBar.innerHTML = `
+                        <span class="text-xs font-semibold text-slate-300 shrink-0">Color Stops</span>
+                        <input type="range" min="3" max="256" step="1" value="${cfg.steps}" class="active-steps-slider flex-1 min-w-[90px] max-w-xs color-slider" style="background: #475569;">
+                        <input type="number" min="3" max="256" value="${cfg.steps}" class="active-steps-num w-16 bg-slate-900 border border-slate-700 rounded text-center text-xs focus:outline-none focus:border-blue-500 text-white font-mono py-1">
+                    `;
+
+                    const sliderEl = stopsBar.querySelector('.active-steps-slider');
+                    const numEl = stopsBar.querySelector('.active-steps-num');
+
+                    sliderEl.addEventListener('mousedown', beginPendingUndo);
+                    sliderEl.addEventListener('touchstart', beginPendingUndo, { passive: true });
+                    sliderEl.addEventListener('input', (e) => {
+                        beginPendingUndo();
+                        state.steps = parseInt(e.target.value, 10);
+                        numEl.value = state.steps;
+                        updateAll();
+                    });
+                    sliderEl.addEventListener('change', commitPendingUndo);
+                    sliderEl.addEventListener('mouseup', commitPendingUndo);
+                    sliderEl.addEventListener('touchend', commitPendingUndo);
+
+                    numEl.addEventListener('focus', beginPendingUndo);
+                    numEl.addEventListener('input', (e) => {
+                        let v = parseInt(e.target.value, 10);
+                        if (Number.isNaN(v)) return;
+                        v = Math.max(3, Math.min(256, v));
+                        state.steps = v;
+                        sliderEl.value = v;
+                        updateAll(null, true);
+                    });
+                    numEl.addEventListener('blur', () => {
+                        let v = parseInt(numEl.value, 10);
+                        if (Number.isNaN(v) || v < 3) v = 3;
+                        if (v > 256) v = 256;
+                        state.steps = v;
+                        sliderEl.value = v;
+                        numEl.value = v;
+                        commitPendingUndo();
+                        updateAll();
+                    });
+                    numEl.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') e.target.blur();
+                    });
+
+                    rowEl.appendChild(stopsBar);
+                }
+
+                // Main Content Line: Badge + Swatches Strip + Optional Delete Button
+                const mainRowLine = document.createElement('div');
+                mainRowLine.className = 'flex items-center gap-2.5 sm:gap-3 min-w-0';
 
                 // Left Row Indicator
                 const badgeEl = document.createElement('div');
@@ -1639,33 +1983,15 @@
                 }`;
                 badgeEl.innerHTML = `
                     <span>#${rowIndex + 1}</span>
-                    <span class="text-[9px] font-normal mt-0.5 ${isSelected ? 'text-blue-300' : 'text-slate-600'}">${cfg.steps}</span>
+                    <span class="row-steps-count text-[9px] font-normal mt-0.5 ${isSelected ? 'text-blue-300' : 'text-slate-600'}">${cfg.steps}</span>
                 `;
-                rowEl.appendChild(badgeEl);
+                mainRowLine.appendChild(badgeEl);
 
                 // Swatches Strip
                 const swatchesEl = document.createElement('div');
-                swatchesEl.className = 'flex-1 min-w-0 flex gap-2.5 overflow-x-auto pb-1 snap-x items-end';
-
-                palette.forEach((p, i) => {
-                    const hex = oklch_to_hex(p.l, p.c, p.h);
-                    const swatch = document.createElement('div');
-                    swatch.className = 'flex flex-col items-center gap-1 shrink-0 snap-center transition-transform hover:-translate-y-1';
-
-                    let label = '';
-                    if (i === 0) label = 'Start';
-                    else if (i === palette.length - 1) label = 'End';
-                    else if (p === cfg.mid) label = 'Middle';
-                    else label = `Stop ${i + 1}`;
-
-                    swatch.innerHTML = `
-                        <div class="w-12 h-12 sm:w-16 sm:h-14 rounded-lg shadow border border-white/10" style="background-color: ${hex}"></div>
-                        <span class="text-[10px] font-mono text-slate-300 uppercase">${hex}</span>
-                        <span class="text-[9px] text-slate-500 font-bold tracking-wider uppercase">${label}</span>
-                    `;
-                    swatchesEl.appendChild(swatch);
-                });
-                rowEl.appendChild(swatchesEl);
+                swatchesEl.className = 'swatches-strip flex-1 min-w-0 flex gap-2.5 overflow-x-auto pb-1 snap-x items-end';
+                buildSwatchesStrip(swatchesEl, palette, cfg, rowIndex);
+                mainRowLine.appendChild(swatchesEl);
 
                 // Delete Button (present next to every row except the first one)
                 if (rowIndex > 0) {
@@ -1682,13 +2008,13 @@
                         e.stopPropagation();
                         deletePaletteRow(rowIndex);
                     });
-                    rowEl.appendChild(delBtn);
+                    mainRowLine.appendChild(delBtn);
                 }
 
+                rowEl.appendChild(mainRowLine);
                 listContainer.appendChild(rowEl);
             });
         }
-
 
         /* --- 4. Three.js 3D Visualization --- */
         let scene, camera, renderer, controls, curveObject;
@@ -1880,20 +2206,20 @@
         }
 
         // Core Update loop (Triggers on any state change)
-        function updateAll(skipInputId = null) {
+        function updateAll(skipInputId = null, skipStepsInput = false) {
             state = appState.palettes[appState.activeIndex];
             syncSidebar(skipInputId);
             updateSVGs();
             renderLCBackground(); // dynamically updates the LC background if the mid hue changed
             let generatedPalette = generatePalette(state);
-            renderAllPaletteRows(generatedPalette);
+            renderAllPaletteRows(generatedPalette, skipStepsInput);
             update3D(generatedPalette);
         }
 
         // App Initialization
         window.onload = () => {
             initSidebar();
-            initHCBackground(); // Draws the static polar background once
+            renderHCBackground(); // Draws the polar background once (gamut overlay off by default)
             drawGrids();
             initInteractions();
             init3D();
