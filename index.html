@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OKlch Color Shift Palette Generator</title>
+    <meta name="theme-color" content="#0f172a">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="apple-touch-icon" href="favicon--192x192.png">
     <link rel="icon" type="image/png" sizes="32x32" href="favicon--32x32.png">
     <link rel="icon" type="image/png" sizes="192x192" href="favicon--192x192.png">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -91,13 +97,13 @@
         .editor-card.is-expanded .curve-1,
         .editor-card.is-expanded .curve-2 { stroke-width: 2; }
         .editor-card.is-expanded .handle-line { stroke-width: 1; stroke-dasharray: 2.5; }
-
+        
         /* Hide scrollbars but keep functionality */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #1e293b; }
         ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #64748b; }
-
+        
         /* Custom Slider Style */
         input[type=range].color-slider {
             -webkit-appearance: none;
@@ -136,13 +142,13 @@
 
     <!-- Top Area: Controls and Editors -->
     <div class="flex flex-col sm:flex-1 sm:min-h-0 sm:flex-row sm:overflow-hidden">
-
+        
         <!-- Sidebar Controls -->
         <aside class="w-full sm:w-80 bg-slate-900 border-b sm:border-b-0 sm:border-r border-slate-800 flex flex-col sm:overflow-y-auto z-10 shrink-0">
             <div class="p-4 sm:p-5 border-b border-slate-800">
                 <div class="flex items-start justify-between gap-2">
                     <div>
-                        <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">OHlch Color Shift Palette Generator</h1>
+                        <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">OKlch Color Shift Palette Generator</h1>
                         <p class="text-xs text-slate-400 mt-1">3D curve & multi-section visualizer</p>
                     </div>
                     <div class="flex items-center gap-1 shrink-0 pt-0.5">
@@ -179,9 +185,9 @@
 
         <!-- Main Visualization Area -->
         <main class="flex flex-col sm:flex-1 bg-slate-950 relative sm:overflow-hidden">
-
+            
             <div class="grid grid-cols-1 sm:flex-1 xl:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6 sm:overflow-y-auto">
-
+                
                 <!-- L vs C Editor -->
                 <div id="card-lc" class="editor-card flex flex-col items-center bg-slate-900/50 p-4 rounded-xl border border-slate-800">
                     <div id="lc-header" class="editor-header w-full flex flex-wrap items-center justify-between gap-2 mb-4">
@@ -208,23 +214,23 @@
 
                             <!-- Non-selected palette ghosts (non-interactive) -->
                             <g id="lc-ghosts" pointer-events="none"></g>
-
+                            
                             <!-- Connecting handle lines -->
                             <line id="lc-h1-line" class="handle-line" />
                             <line id="lc-h2-line" class="handle-line" />
                             <line id="lc-h3-line" class="handle-line" />
                             <line id="lc-h4-line" class="handle-line" />
-
+                            
                             <!-- Curves -->
                             <path id="lc-curve-1" class="curve-1" />
                             <path id="lc-curve-2" class="curve-2" />
-
+                            
                             <!-- Draggable Nodes -->
                             <circle id="lc-h-d-out" class="ctrl-point point" />
                             <circle id="lc-h-m-in" class="ctrl-point point" />
                             <circle id="lc-h-m-out" class="ctrl-point point" />
                             <circle id="lc-h-l-in" class="ctrl-point point" />
-
+                            
                             <circle id="lc-d" class="main-point point" />
                             <circle id="lc-d-inner" r="3.5" class="inner-point" />
                             <circle id="lc-m" class="main-point point" />
@@ -279,17 +285,17 @@
 
                             <!-- Non-selected palette ghosts (non-interactive) -->
                             <g id="hc-ghosts" pointer-events="none"></g>
-
+                            
                             <!-- Connecting handle lines -->
                             <line id="hc-h1-line" class="handle-line" />
                             <line id="hc-h2-line" class="handle-line" />
                             <line id="hc-h3-line" class="handle-line" />
                             <line id="hc-h4-line" class="handle-line" />
-
+                            
                             <!-- Curves -->
                             <path id="hc-curve-1" class="curve-1" />
                             <path id="hc-curve-2" class="curve-2" />
-
+                            
                             <!-- Draggable Nodes -->
                             <circle id="hc-h-d-out" class="ctrl-point point" />
                             <circle id="hc-h-m-in" class="ctrl-point point" />
@@ -1226,7 +1232,7 @@
                 document.getElementById(`l-${k}`).value = state[k].l;
                 document.getElementById(`c-${k}`).value = state[k].c;
                 document.getElementById(`h-${k}`).value = state[k].h;
-
+                
                 if (skipInputId !== `val-l-${k}`) {
                     document.getElementById(`val-l-${k}`).value = state[k].l.toFixed(2);
                 }
@@ -1236,19 +1242,19 @@
                 if (skipInputId !== `val-h-${k}`) {
                     document.getElementById(`val-h-${k}`).value = Math.round(state[k].h);
                 }
-
+                
                 let hex = oklch_to_hex(state[k].l, state[k].c, state[k].h);
                 document.getElementById(`hex-${k}`).value = hex;
                 if (skipInputId !== `text-${k}`) {
                     document.getElementById(`text-${k}`).value = hex;
                 }
-
+                
                 // Handle Locks UI
                 let isLocked = state.locked[k];
                 document.getElementById(`lock-icon-${k}`).innerHTML = isLocked ? lockSvgClosed : lockSvgOpen;
                 document.getElementById(`lock-${k}`).className = isLocked ? "text-white transition-colors p-1" : "text-slate-500 hover:text-white transition-colors p-1";
                 document.getElementById(`section-${k}`).style.opacity = isLocked ? "0.6" : "1";
-
+                
                 ['l', 'c', 'h', 'hex', 'text', 'val-l', 'val-c', 'val-h'].forEach(prop => {
                     document.getElementById(`${prop}-${k}`).disabled = isLocked;
                 });
@@ -1256,7 +1262,7 @@
                 // Dynamic slider backgrounds
                 document.getElementById(`l-${k}`).style.background = `linear-gradient(to right, oklch(0 ${state[k].c} ${state[k].h}), oklch(1 ${state[k].c} ${state[k].h}))`;
                 document.getElementById(`c-${k}`).style.background = `linear-gradient(to right, oklch(${state[k].l} 0 ${state[k].h}), oklch(${state[k].l} ${MAX_C} ${state[k].h}))`;
-
+                
                 let hGrad = [];
                 for(let i=0; i<=6; i++) {
                     hGrad.push(`oklch(${state[k].l} ${state[k].c} ${i*60})`);
@@ -1417,7 +1423,7 @@
             let sinH = Math.sin(hRad);
             const eps = 1e-6;
             const outOfGamutScale = 70 / 325; // Equivalent to compositing rgba(0, 0, 0, 0.5) over alpha 70/255
-
+            
             for (let y = 0; y < size; y++) {
                 let l = 1 - (y / size);
                 for (let x = 0; x < size; x++) {
@@ -1514,7 +1520,7 @@
             document.getElementById('lc-curve-1').setAttribute('d', getPolyline(d2m, p => mapLC_X(p.c), p => mapLC_Y(p.l)));
             document.getElementById('lc-curve-2').setAttribute('d', getPolyline(m2l, p => mapLC_X(p.c), p => mapLC_Y(p.l)));
 
-            // H-C Paths
+            // H-C Paths 
             document.getElementById('hc-curve-1').setAttribute('d', getPolyline(d2m, p => mapHC_X(p.c, p.h), p => mapHC_Y(p.c, p.h)));
             document.getElementById('hc-curve-2').setAttribute('d', getPolyline(m2l, p => mapHC_X(p.c, p.h), p => mapHC_Y(p.c, p.h)));
 
@@ -1587,12 +1593,12 @@
                 if (targetType === 'handle') return isHandleLocked(targetKey);
                 return false;
             }
-
+            
             function register(id, space, targetType, targetKey) {
                 document.getElementById(id).addEventListener('mousedown', (e) => {
                     e.stopPropagation();
                     if (isTargetLocked(targetType, targetKey)) return; // Block drag if stop or its handles are locked
-
+                    
                     dragging = { type: targetType, key: targetKey };
                     dragSpace = space;
                     dragChanged = false;
@@ -1601,7 +1607,7 @@
                 document.getElementById(id).addEventListener('touchstart', (e) => {
                     e.stopPropagation();
                     if (isTargetLocked(targetType, targetKey)) return;
-
+                    
                     dragging = { type: targetType, key: targetKey };
                     dragSpace = space;
                     dragChanged = false;
@@ -1746,7 +1752,7 @@
                 dragChanged = true;
                 let svg = dragSpace === 'LC' ? svgLC : svgHC;
                 let loc = getMouseCoords(e, svg);
-
+                
                 let targetObj = dragging.type === 'point' ? state[dragging.key] : state.handles[dragging.key];
 
                 let old_m_lab = null;
@@ -1765,7 +1771,7 @@
                     let r = Math.sqrt(dx*dx + dy*dy);
                     let a = Math.atan2(dy, dx) * 180 / Math.PI;
                     if (a < 0) a += 360;
-
+                    
                     targetObj.c = Math.max(0, Math.min(MAX_C, (r / H) * MAX_C));
                     targetObj.h = a;
                 }
@@ -1791,10 +1797,10 @@
                 if (dragging.key === 'm_in' || dragging.key === 'm_out') {
                     let masterKey = dragging.key;
                     let syncKey = masterKey === 'm_in' ? 'm_out' : 'm_in';
-
+                    
                     let pMaster = state.handles[masterKey];
                     let pSync = state.handles[syncKey];
-
+                    
                     let labM = oklch_to_oklab(state.mid.l, state.mid.c, state.mid.h);
                     let labMaster = oklch_to_oklab(pMaster.l, pMaster.c, pMaster.h);
                     let labSync = oklch_to_oklab(pSync.l, pSync.c, pSync.h);
@@ -2086,7 +2092,7 @@
 
         function init3D() {
             const container = document.getElementById('3d-container');
-
+            
             scene = new THREE.Scene();
             camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 100);
             camera.position.set(12, 12, 18);
@@ -2112,7 +2118,7 @@
             // Draw central L axis
             const axisGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), new THREE.Vector3(0,10,0)]);
             scene.add(new THREE.Line(axisGeo, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.2 })));
-
+            
             // Draw Chroma limit rings
             const ringMat = new THREE.LineBasicMaterial({ color: 0x64748b, transparent: true, opacity: 0.3 });
             [0, 5, 10].forEach(y => {
@@ -2215,10 +2221,10 @@
                     scene.ghostGroup.add(mesh);
                 });
             });
-
+            
             let pts = [];
             let colors = [];
-
+            
             let d2m = buildCurveData(getPointAtT1).pts;
             let m2l = buildCurveData(getPointAtT2).pts;
             let allPts = [...d2m, ...m2l];
@@ -2226,10 +2232,10 @@
             allPts.forEach(p => {
                 let r = (p.c / MAX_C) * 4;
                 let a = p.h * Math.PI / 180;
-
+                
                 // Map to ThreeJS space (X=Chroma*cosH, Z=-Chroma*sinH, Y=Lightness)
                 pts.push(new THREE.Vector3(r * Math.cos(a), p.l * 10, -r * Math.sin(a)));
-
+                
                 let hex = oklch_to_hex(p.l, p.c, p.h);
                 let color = new THREE.Color(hex);
                 colors.push(color.r, color.g, color.b);
@@ -2244,13 +2250,13 @@
                 scene.add(scene.stopSpheres);
             }
             // Cleanup old spheres
-            while(scene.stopSpheres.children.length > 0) {
+            while(scene.stopSpheres.children.length > 0) { 
                 let child = scene.stopSpheres.children[0];
-                scene.stopSpheres.remove(child);
+                scene.stopSpheres.remove(child); 
                 child.geometry.dispose();
                 if (child.material) child.material.dispose();
             }
-
+            
             if (palette) {
                 const sphereGeo = new THREE.SphereGeometry(0.35, 16, 16);
                 palette.forEach(p => {
@@ -2259,12 +2265,12 @@
                     let x = r * Math.cos(a);
                     let z = -r * Math.sin(a);
                     let y = p.l * 10;
-
+                    
                     let hex = oklch_to_hex(p.l, p.c, p.h);
                     let mat = new THREE.MeshBasicMaterial({ color: hex });
                     let mesh = new THREE.Mesh(sphereGeo, mat);
                     mesh.position.set(x, y, z);
-
+                    
                     scene.stopSpheres.add(mesh);
                 });
             }
@@ -2291,6 +2297,15 @@
             updateUndoRedoButtons();
             updateAll();
         };
+
+        // Register Service Worker for offline PWA support
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch((err) => {
+                    console.warn('Service worker registration failed:', err);
+                });
+            });
+        }
 
     </script>
 </body>
