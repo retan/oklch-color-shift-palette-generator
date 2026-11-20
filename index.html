@@ -160,10 +160,19 @@
                 </div>
             </div>
 
-            <div class="p-4 sm:p-5 space-y-6 flex-1">
+            <div class="p-4 sm:p-5 space-y-6 flex-1 flex flex-col justify-between">
                 <!-- Colors Loop rendered via JS logic below -->
                 <div id="color-inputs-container" class="space-y-6">
                     <!-- Dynamic content injected here to keep HTML DRY -->
+                </div>
+
+                <!-- Tonal Color Scale Switch (affects all generated palettes) -->
+                <div class="pt-4 border-t border-slate-800">
+                    <label class="flex items-center justify-between gap-3 bg-slate-950 px-3.5 py-2.5 rounded-lg border border-slate-800 hover:border-slate-700 cursor-pointer select-none transition-colors" title="Weight end intervals to half the spacing of interior intervals">
+                        <span class="text-sm font-semibold text-slate-300">Tonal Color Scale</span>
+                        <input type="checkbox" id="tonal-scale-toggle" class="sr-only peer">
+                        <span class="relative w-9 h-5 bg-slate-700 rounded-full transition-colors peer-checked:bg-blue-500 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-transform peer-checked:after:translate-x-4"></span>
+                    </label>
                 </div>
             </div>
         </aside>
@@ -400,7 +409,8 @@
 
         const appState = {
             palettes: [createDefaultPaletteConfig()],
-            activeIndex: 0
+            activeIndex: 0,
+            tonalScale: false
         };
 
         // Active palette reference for sidebar, 2D SVG editors, and 3D viewer
@@ -455,7 +465,8 @@
         function captureFullSnapshot() {
             return {
                 palettes: appState.palettes.map(clonePaletteConfig),
-                activeIndex: appState.activeIndex
+                activeIndex: appState.activeIndex,
+                tonalScale: appState.tonalScale
             };
         }
 
@@ -463,6 +474,7 @@
             if (!snap) return;
             appState.palettes = snap.palettes.map(clonePaletteConfig);
             appState.activeIndex = Math.max(0, Math.min(snap.activeIndex, appState.palettes.length - 1));
+            appState.tonalScale = Boolean(snap.tonalScale);
             state = appState.palettes[appState.activeIndex];
         }
 
@@ -680,7 +692,7 @@
             return { pts, totalLen };
         }
 
-        // Fetch interpolated position at an exact arc length along the curve
+        // Interpolate color point along pre-sampled curve data by target arc length
         function getPointAtLength(curveData, targetLen) {
             if (targetLen <= 0) return curveData.pts[0];
             if (targetLen >= curveData.totalLen) return curveData.pts[curveData.pts.length - 1];
@@ -701,7 +713,25 @@
             return curveData.pts[curveData.pts.length - 1];
         }
 
-        // Disperse color stops evenly in OKlch space, snapping the closest swatch to Middle Stop
+        // Compute normalized target curve positions [0, 1] (even or tonal half-weighted end intervals)
+        function getTargetStopFractions(n, tonalScale) {
+            const u = new Array(n);
+            u[0] = 0;
+            u[n - 1] = 1;
+            if (!tonalScale || n <= 3) {
+                for (let i = 1; i < n - 1; i++) {
+                    u[i] = i / (n - 1);
+                }
+            } else {
+                const denom = 2 * (n - 2);
+                for (let i = 1; i < n - 1; i++) {
+                    u[i] = (2 * i - 1) / denom;
+                }
+            }
+            return u;
+        }
+
+        // Disperse color stops along OKlch curve (even or tonal-weighted), snapping closest swatch to Middle Stop
         function generatePalette(cfg = state) {
             let n = cfg.steps;
             if (n < 3) return [cfg.dark, cfg.light];
@@ -712,26 +742,39 @@
             let L2 = m2l.totalLen;
             let totalLen = L1 + L2;
 
-            let idealStep = totalLen / (n - 1);
-            let midIndex = idealStep > 0 ? Math.round(L1 / idealStep) : Math.floor((n - 1) / 2);
+            const u = getTargetStopFractions(n, appState.tonalScale);
 
-            if (midIndex <= 0) midIndex = 1;
-            if (midIndex >= n - 1) midIndex = n - 2;
+            let midIndex = 1;
+            let bestDiff = Infinity;
+            for (let i = 1; i <= n - 2; i++) {
+                let diff = Math.abs(u[i] * totalLen - L1);
+                if (diff < bestDiff) {
+                    bestDiff = diff;
+                    midIndex = i;
+                }
+            }
 
             let palette = [];
 
             // Distribute Start -> Middle
+            const uMid = u[midIndex];
             for (let i = 0; i <= midIndex; i++) {
                 if (i === 0) palette.push(cfg.dark);
                 else if (i === midIndex) palette.push(cfg.mid);
-                else palette.push(getPointAtLength(d2m, (i / midIndex) * L1));
+                else {
+                    let frac = uMid > 0 ? (u[i] / uMid) : (i / midIndex);
+                    palette.push(getPointAtLength(d2m, frac * L1));
+                }
             }
 
             // Distribute Middle -> End
-            let remaining = n - 1 - midIndex;
-            for (let i = 1; i <= remaining; i++) {
-                if (i === remaining) palette.push(cfg.light);
-                else palette.push(getPointAtLength(m2l, (i / remaining) * L2));
+            const uRem = 1 - uMid;
+            for (let i = midIndex + 1; i < n; i++) {
+                if (i === n - 1) palette.push(cfg.light);
+                else {
+                    let frac = uRem > 0 ? ((u[i] - uMid) / uRem) : ((i - midIndex) / (n - 1 - midIndex));
+                    palette.push(getPointAtLength(m2l, frac * L2));
+                }
             }
             return palette;
         }
@@ -1011,6 +1054,17 @@
                 const listEl = document.getElementById('palettes-list');
                 if (listEl) listEl.scrollTop = listEl.scrollHeight;
             });
+
+            // Tonal Color Scale global switch (off by default)
+            const tonalToggle = document.getElementById('tonal-scale-toggle');
+            if (tonalToggle) {
+                tonalToggle.checked = Boolean(appState.tonalScale);
+                tonalToggle.addEventListener('change', (e) => {
+                    recordImmediateUndo();
+                    appState.tonalScale = e.target.checked;
+                    updateAll();
+                });
+            }
         }
 
         function selectPaletteRow(index) {
@@ -1107,6 +1161,7 @@
             const data = {
                 version: 1,
                 activeIndex: appState.activeIndex,
+                tonalScale: appState.tonalScale,
                 palettes: appState.palettes.map(clonePaletteConfig)
             };
             const payload = JSON.stringify(data, null, 2);
@@ -1150,6 +1205,9 @@
                     recordImmediateUndo();
                     appState.palettes = rawPalettes.map(sanitizePaletteConfig);
                     appState.activeIndex = Math.max(0, Math.min(nextActive, appState.palettes.length - 1));
+                    if (typeof parsed.tonalScale === 'boolean') {
+                        appState.tonalScale = parsed.tonalScale;
+                    }
                     state = appState.palettes[appState.activeIndex];
                     updateAll();
                 } catch (err) {
@@ -1205,6 +1263,11 @@
                 }
                 document.getElementById(`h-${k}`).style.background = `linear-gradient(to right, ${hGrad.join(', ')})`;
             });
+
+            const tonalToggle = document.getElementById('tonal-scale-toggle');
+            if (tonalToggle) {
+                tonalToggle.checked = Boolean(appState.tonalScale);
+            }
         }
 
         // Coordinates Mapping to SVG dimensions (300x300 canvas)

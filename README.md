@@ -9,7 +9,8 @@ An interactive, browser-based color palette studio specifically designed to crea
 - **Perceptual Color Engine (OKlch + OKlab):**
   - Edit Start, Middle, and End stops precisely using **Lightness ($L$)**, **Chroma ($C$)**, and **Hue ($H$)** sliders, synchronized numerical inputs, or **Hex** color pickers and text fields.
   - All cubic Bezier curve interpolations and handle tangents are computed internally in **OKlab** 3D Cartesian space for smooth, natural hue and chroma transitions without muddiness.
-  - Adjust between **$3$ and $256$ color stops** using the **Color Stops** slider and numerical input embedded directly inside the active palette card. Stops are distributed evenly by perceptual arc length while pinning the closest stop to your exact Middle Stop color.
+  - Adjust between **$3$ and $256$ color stops** using the **Color Stops** slider and numerical input embedded directly inside the active palette card. By default, stops are distributed evenly by perceptual arc length while pinning the closest stop to your exact Middle Stop color.
+  - **Tonal Color Scale Mode:** Toggle the **Tonal Color Scale** switch at the bottom of the sidebar (off by default) to apply tonal interval weighting across all generated palettes—spacing the first and last intervals at half ($\frac{1}{2}$) the curve distance of interior intervals for finer tonal steps at shadow and highlight extremes while preserving Middle Stop snapping.
 - **Dual Synchronized 2D Visual Editors:**
   - **Lightness vs. Chroma:** Rectangular cross-section with a live background synced to the Middle Stop's hue.
   - **Hue vs. Chroma (Polar):** Circular cross-section at fixed lightness ($L = 0.5$) with radial Chroma and angular Hue.
@@ -27,7 +28,7 @@ An interactive, browser-based color palette studio specifically designed to crea
   - **$25\%$ Opacity Ghost Previews:** Non-selected palettes remain visible as non-interactive, semi-transparent ghosts (both curves and stop markers) across both 2D editors and the 3D cylinder view so you can compare and harmonize ramps across your entire project.
 - **Undo / Redo, Config JSON Save/Load & Infinite Painter Export:**
   - Single-step **Undo** (`Ctrl+Z` / `Cmd+Z`) and **Redo** (`Ctrl+Y` / `Cmd+Shift+Z`).
-  - **Export Config JSON & Import Config JSON:** Save your complete multi-palette workspace configuration (all rows, stops, Bezier handles, lock states, stop counts, and active selection) to a `.json` file and reload it anytime.
+  - **Export Config JSON & Import Config JSON:** Save your complete multi-palette workspace configuration (all rows, stops, Bezier handles, lock states, stop counts, Tonal Color Scale setting, and active selection) to a `.json` file and reload it anytime.
   - **Export Infinite Painter (`.clrs`):** Export all palette rows together into a single `.clrs` file ready for Infinite Painter on desktop, tablet, and mobile browsers.
 - **Responsive Cross-Device Layout:**
   - Uses dynamic viewport sizing (`100dvh`) on desktop and tablet screens so palette rows and export controls remain visible without clipping, and adapts into a single-column scrollable layout on narrow screens.
@@ -46,6 +47,7 @@ This project is a zero-build, single-file web application.
 | **Adjust Curve Shape** | Drag any unlocked stop node or Bezier control handle in either 2D editor |
 | **Fine-Tune Stop Values** | Use the $L$, $C$, $H$ sliders, synchronized numerical boxes, or Hex inputs |
 | **Lock Stop & Handles** | Click the lock icon next to Start, Middle, or End Stop |
+| **Toggle Tonal Color Scale** | Flip the **Tonal Color Scale** switch at the bottom of the sidebar |
 | **Toggle sRGB Gamut Overlay** | Flip the **Gamut** switch in the header of either 2D editor |
 | **Expand / Collapse 2D Editor** | Click **Expand** in the editor header (`Esc` to exit full-viewport mode) |
 | **Pan All Unlocked Stops** | Click and drag the background of either 2D editor |
@@ -57,7 +59,7 @@ This project is a zero-build, single-file web application.
 ## Built With
 
 - **HTML5 Canvas & Inline SVG** — 2D color space gradients, sRGB gamut overlays, interactive Bezier editors, and ghost curve layers
-- **Vanilla JavaScript (ES6+)** — OKlch/OKlab color math, arc-length sampling, JSON serialization, and `.clrs` export
+- **Vanilla JavaScript (ES6+)** — OKlch/OKlab color math, arc-length and tonal-weighted sampling, JSON serialization, and `.clrs` export
 - **Three.js** — Interactive 3D cylindrical space visualization
 - **Tailwind CSS** — Responsive UI styling
 
