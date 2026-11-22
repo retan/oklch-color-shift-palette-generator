@@ -97,13 +97,13 @@
         .editor-card.is-expanded .curve-1,
         .editor-card.is-expanded .curve-2 { stroke-width: 2; }
         .editor-card.is-expanded .handle-line { stroke-width: 1; stroke-dasharray: 2.5; }
-        
+
         /* Hide scrollbars but keep functionality */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #1e293b; }
         ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #64748b; }
-        
+
         /* Custom Slider Style */
         input[type=range].color-slider {
             -webkit-appearance: none;
@@ -140,9 +140,31 @@
     <!-- Status Toast Banner (replaces blocking alerts) -->
     <div id="status-toast" class="fixed top-4 right-4 z-50 hidden max-w-sm px-4 py-3 rounded-xl bg-slate-900 border border-red-500/60 text-slate-100 text-xs shadow-xl"></div>
 
+    <!-- Infinite Painter Export Name Dialog -->
+    <div id="clrs-export-modal" role="dialog" aria-modal="true" aria-labelledby="clrs-export-modal-title" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-sm p-5 space-y-4">
+            <div>
+                <h3 id="clrs-export-modal-title" class="text-base font-bold text-slate-100">Export Infinite Painter Palette</h3>
+                <p class="text-xs text-slate-400 mt-1">Enter a name for the palette to display inside Infinite Painter.</p>
+            </div>
+            <div class="space-y-1.5">
+                <label for="clrs-palette-name-input" class="block text-xs font-semibold text-slate-300">Palette Name</label>
+                <input type="text" id="clrs-palette-name-input" placeholder="Color Shift" autocomplete="off" spellcheck="false" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500">
+            </div>
+            <div class="flex items-center justify-end gap-2.5 pt-1">
+                <button type="button" id="clrs-export-cancel-btn" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold border border-slate-700 transition-colors">
+                    Cancel
+                </button>
+                <button type="button" id="clrs-export-ok-btn" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold border border-blue-500 transition-colors">
+                    OK
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Top Area: Controls and Editors -->
     <div class="flex flex-col sm:flex-1 sm:min-h-0 sm:flex-row sm:overflow-hidden">
-        
+
         <!-- Sidebar Controls -->
         <aside class="w-full sm:w-80 bg-slate-900 border-b sm:border-b-0 sm:border-r border-slate-800 flex flex-col sm:overflow-y-auto z-10 shrink-0">
             <div class="p-4 sm:p-5 border-b border-slate-800">
@@ -185,9 +207,9 @@
 
         <!-- Main Visualization Area -->
         <main class="flex flex-col sm:flex-1 bg-slate-950 relative sm:overflow-hidden">
-            
+
             <div class="grid grid-cols-1 sm:flex-1 xl:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6 sm:overflow-y-auto">
-                
+
                 <!-- L vs C Editor -->
                 <div id="card-lc" class="editor-card flex flex-col items-center bg-slate-900/50 p-4 rounded-xl border border-slate-800">
                     <div id="lc-header" class="editor-header w-full flex flex-wrap items-center justify-between gap-2 mb-4">
@@ -214,23 +236,23 @@
 
                             <!-- Non-selected palette ghosts (non-interactive) -->
                             <g id="lc-ghosts" pointer-events="none"></g>
-                            
+
                             <!-- Connecting handle lines -->
                             <line id="lc-h1-line" class="handle-line" />
                             <line id="lc-h2-line" class="handle-line" />
                             <line id="lc-h3-line" class="handle-line" />
                             <line id="lc-h4-line" class="handle-line" />
-                            
+
                             <!-- Curves -->
                             <path id="lc-curve-1" class="curve-1" />
                             <path id="lc-curve-2" class="curve-2" />
-                            
+
                             <!-- Draggable Nodes -->
                             <circle id="lc-h-d-out" class="ctrl-point point" />
                             <circle id="lc-h-m-in" class="ctrl-point point" />
                             <circle id="lc-h-m-out" class="ctrl-point point" />
                             <circle id="lc-h-l-in" class="ctrl-point point" />
-                            
+
                             <circle id="lc-d" class="main-point point" />
                             <circle id="lc-d-inner" r="3.5" class="inner-point" />
                             <circle id="lc-m" class="main-point point" />
@@ -285,17 +307,17 @@
 
                             <!-- Non-selected palette ghosts (non-interactive) -->
                             <g id="hc-ghosts" pointer-events="none"></g>
-                            
+
                             <!-- Connecting handle lines -->
                             <line id="hc-h1-line" class="handle-line" />
                             <line id="hc-h2-line" class="handle-line" />
                             <line id="hc-h3-line" class="handle-line" />
                             <line id="hc-h4-line" class="handle-line" />
-                            
+
                             <!-- Curves -->
                             <path id="hc-curve-1" class="curve-1" />
                             <path id="hc-curve-2" class="curve-2" />
-                            
+
                             <!-- Draggable Nodes -->
                             <circle id="hc-h-d-out" class="ctrl-point point" />
                             <circle id="hc-h-m-in" class="ctrl-point point" />
@@ -932,8 +954,27 @@
                 });
             });
 
-            // Export / Import buttons
-            document.getElementById('export-clrs-btn').addEventListener('click', exportInfinitePainterClrs);
+            // Export / Import buttons & Infinite Painter palette name dialog
+            document.getElementById('export-clrs-btn').addEventListener('click', openClrsExportDialog);
+            document.getElementById('clrs-export-cancel-btn').addEventListener('click', closeClrsExportDialog);
+            document.getElementById('clrs-export-ok-btn').addEventListener('click', confirmClrsExport);
+
+            const clrsExportModal = document.getElementById('clrs-export-modal');
+            clrsExportModal.addEventListener('click', (e) => {
+                if (e.target === clrsExportModal) closeClrsExportDialog();
+            });
+
+            const clrsNameInput = document.getElementById('clrs-palette-name-input');
+            clrsNameInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    confirmClrsExport();
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    closeClrsExportDialog();
+                }
+            });
+
             document.getElementById('export-json-btn').addEventListener('click', exportConfigurationJson);
 
             const importJsonBtn = document.getElementById('import-json-btn');
@@ -1048,54 +1089,77 @@
                 updateAll();
             });
 
-            // Add new palette row (clones the previous row and selects the newly added row)
-            document.getElementById('add-palette-btn').addEventListener('click', () => {
+            // Tonal Color Scale switch (affects all generated palettes)
+            document.getElementById('tonal-scale-toggle').addEventListener('change', (e) => {
                 recordImmediateUndo();
-                const prevRow = appState.palettes[appState.palettes.length - 1];
-                const newRow = clonePaletteConfig(prevRow);
-                appState.palettes.push(newRow);
-                appState.activeIndex = appState.palettes.length - 1;
-                state = appState.palettes[appState.activeIndex];
+                appState.tonalScale = e.target.checked;
                 updateAll();
-                const listEl = document.getElementById('palettes-list');
-                if (listEl) listEl.scrollTop = listEl.scrollHeight;
             });
 
-            // Tonal Color Scale global switch (off by default)
-            const tonalToggle = document.getElementById('tonal-scale-toggle');
-            if (tonalToggle) {
-                tonalToggle.checked = Boolean(appState.tonalScale);
-                tonalToggle.addEventListener('change', (e) => {
-                    recordImmediateUndo();
-                    appState.tonalScale = e.target.checked;
-                    updateAll();
-                });
-            }
+            // Add new palette row (clones the previous row and selects the newly added row)
+            document.getElementById('add-palette-btn').addEventListener('click', addPaletteRow);
         }
 
-        function selectPaletteRow(index) {
-            if (index < 0 || index >= appState.palettes.length || index === appState.activeIndex) return;
+        // Multi-palette row selection, addition, and deletion
+        function selectPaletteRow(rowIndex) {
+            if (rowIndex < 0 || rowIndex >= appState.palettes.length) return;
+            if (appState.activeIndex === rowIndex) return;
             recordImmediateUndo();
-            appState.activeIndex = index;
+            appState.activeIndex = rowIndex;
             state = appState.palettes[appState.activeIndex];
             updateAll();
         }
 
-        function deletePaletteRow(index) {
-            if (index <= 0 || index >= appState.palettes.length) return;
+        function addPaletteRow() {
             recordImmediateUndo();
-            appState.palettes.splice(index, 1);
+            const lastCfg = appState.palettes[appState.palettes.length - 1];
+            appState.palettes.push(clonePaletteConfig(lastCfg));
+            appState.activeIndex = appState.palettes.length - 1;
+            state = appState.palettes[appState.activeIndex];
+            updateAll();
+        }
+
+        function deletePaletteRow(rowIndex) {
+            if (rowIndex <= 0 || rowIndex >= appState.palettes.length) return;
+            recordImmediateUndo();
+            appState.palettes.splice(rowIndex, 1);
             if (appState.activeIndex >= appState.palettes.length) {
                 appState.activeIndex = appState.palettes.length - 1;
-            } else if (index < appState.activeIndex) {
+            } else if (appState.activeIndex > rowIndex) {
                 appState.activeIndex -= 1;
             }
             state = appState.palettes[appState.activeIndex];
             updateAll();
         }
 
+        // Open, cancel, and confirm handlers for the Infinite Painter .clrs export dialog
+        function openClrsExportDialog() {
+            const modal = document.getElementById('clrs-export-modal');
+            const input = document.getElementById('clrs-palette-name-input');
+            if (!modal || !input) return;
+            input.value = '';
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            requestAnimationFrame(() => input.focus());
+        }
+
+        function closeClrsExportDialog() {
+            const modal = document.getElementById('clrs-export-modal');
+            if (!modal) return;
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function confirmClrsExport() {
+            const input = document.getElementById('clrs-palette-name-input');
+            const rawName = input ? input.value.trim() : '';
+            const paletteName = rawName || 'Color Shift';
+            closeClrsExportDialog();
+            exportInfinitePainterClrs(paletteName);
+        }
+
         // Export all palette rows together into a single Infinite Painter .clrs file
-        function exportInfinitePainterClrs() {
+        function exportInfinitePainterClrs(paletteName = 'Color Shift') {
             const colors = [];
             appState.palettes.forEach(cfg => {
                 const palette = generatePalette(cfg);
@@ -1109,9 +1173,14 @@
             });
 
             const payload = JSON.stringify({
-                name: "OKlch Palette",
+                name: paletteName,
                 colors: colors
             }, null, 2);
+
+            const safeFileBase = paletteName
+                .replace(/[<>:"/\\|?*\x00-\x1F]+/g, '_')
+                .replace(/\s+/g, '_')
+                .replace(/^_+|_+$/g, '') || 'Color_Shift';
 
             // Use application/octet-stream so Android Download Manager preserves the .clrs extension instead of appending .json
             const bytes = new TextEncoder().encode(payload);
@@ -1119,7 +1188,7 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `oklch_palette_${appState.palettes.length}rows_${colors.length}.clrs`;
+            a.download = `${safeFileBase}.clrs`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -1232,7 +1301,7 @@
                 document.getElementById(`l-${k}`).value = state[k].l;
                 document.getElementById(`c-${k}`).value = state[k].c;
                 document.getElementById(`h-${k}`).value = state[k].h;
-                
+
                 if (skipInputId !== `val-l-${k}`) {
                     document.getElementById(`val-l-${k}`).value = state[k].l.toFixed(2);
                 }
@@ -1242,19 +1311,19 @@
                 if (skipInputId !== `val-h-${k}`) {
                     document.getElementById(`val-h-${k}`).value = Math.round(state[k].h);
                 }
-                
+
                 let hex = oklch_to_hex(state[k].l, state[k].c, state[k].h);
                 document.getElementById(`hex-${k}`).value = hex;
                 if (skipInputId !== `text-${k}`) {
                     document.getElementById(`text-${k}`).value = hex;
                 }
-                
+
                 // Handle Locks UI
                 let isLocked = state.locked[k];
                 document.getElementById(`lock-icon-${k}`).innerHTML = isLocked ? lockSvgClosed : lockSvgOpen;
                 document.getElementById(`lock-${k}`).className = isLocked ? "text-white transition-colors p-1" : "text-slate-500 hover:text-white transition-colors p-1";
                 document.getElementById(`section-${k}`).style.opacity = isLocked ? "0.6" : "1";
-                
+
                 ['l', 'c', 'h', 'hex', 'text', 'val-l', 'val-c', 'val-h'].forEach(prop => {
                     document.getElementById(`${prop}-${k}`).disabled = isLocked;
                 });
@@ -1262,7 +1331,7 @@
                 // Dynamic slider backgrounds
                 document.getElementById(`l-${k}`).style.background = `linear-gradient(to right, oklch(0 ${state[k].c} ${state[k].h}), oklch(1 ${state[k].c} ${state[k].h}))`;
                 document.getElementById(`c-${k}`).style.background = `linear-gradient(to right, oklch(${state[k].l} 0 ${state[k].h}), oklch(${state[k].l} ${MAX_C} ${state[k].h}))`;
-                
+
                 let hGrad = [];
                 for(let i=0; i<=6; i++) {
                     hGrad.push(`oklch(${state[k].l} ${state[k].c} ${i*60})`);
@@ -1423,7 +1492,7 @@
             let sinH = Math.sin(hRad);
             const eps = 1e-6;
             const outOfGamutScale = 70 / 325; // Equivalent to compositing rgba(0, 0, 0, 0.5) over alpha 70/255
-            
+
             for (let y = 0; y < size; y++) {
                 let l = 1 - (y / size);
                 for (let x = 0; x < size; x++) {
@@ -1520,7 +1589,7 @@
             document.getElementById('lc-curve-1').setAttribute('d', getPolyline(d2m, p => mapLC_X(p.c), p => mapLC_Y(p.l)));
             document.getElementById('lc-curve-2').setAttribute('d', getPolyline(m2l, p => mapLC_X(p.c), p => mapLC_Y(p.l)));
 
-            // H-C Paths 
+            // H-C Paths
             document.getElementById('hc-curve-1').setAttribute('d', getPolyline(d2m, p => mapHC_X(p.c, p.h), p => mapHC_Y(p.c, p.h)));
             document.getElementById('hc-curve-2').setAttribute('d', getPolyline(m2l, p => mapHC_X(p.c, p.h), p => mapHC_Y(p.c, p.h)));
 
@@ -1593,12 +1662,12 @@
                 if (targetType === 'handle') return isHandleLocked(targetKey);
                 return false;
             }
-            
+
             function register(id, space, targetType, targetKey) {
                 document.getElementById(id).addEventListener('mousedown', (e) => {
                     e.stopPropagation();
                     if (isTargetLocked(targetType, targetKey)) return; // Block drag if stop or its handles are locked
-                    
+
                     dragging = { type: targetType, key: targetKey };
                     dragSpace = space;
                     dragChanged = false;
@@ -1607,7 +1676,7 @@
                 document.getElementById(id).addEventListener('touchstart', (e) => {
                     e.stopPropagation();
                     if (isTargetLocked(targetType, targetKey)) return;
-                    
+
                     dragging = { type: targetType, key: targetKey };
                     dragSpace = space;
                     dragChanged = false;
@@ -1752,7 +1821,7 @@
                 dragChanged = true;
                 let svg = dragSpace === 'LC' ? svgLC : svgHC;
                 let loc = getMouseCoords(e, svg);
-                
+
                 let targetObj = dragging.type === 'point' ? state[dragging.key] : state.handles[dragging.key];
 
                 let old_m_lab = null;
@@ -1771,7 +1840,7 @@
                     let r = Math.sqrt(dx*dx + dy*dy);
                     let a = Math.atan2(dy, dx) * 180 / Math.PI;
                     if (a < 0) a += 360;
-                    
+
                     targetObj.c = Math.max(0, Math.min(MAX_C, (r / H) * MAX_C));
                     targetObj.h = a;
                 }
@@ -1797,10 +1866,10 @@
                 if (dragging.key === 'm_in' || dragging.key === 'm_out') {
                     let masterKey = dragging.key;
                     let syncKey = masterKey === 'm_in' ? 'm_out' : 'm_in';
-                    
+
                     let pMaster = state.handles[masterKey];
                     let pSync = state.handles[syncKey];
-                    
+
                     let labM = oklch_to_oklab(state.mid.l, state.mid.c, state.mid.h);
                     let labMaster = oklch_to_oklab(pMaster.l, pMaster.c, pMaster.h);
                     let labSync = oklch_to_oklab(pSync.l, pSync.c, pSync.h);
@@ -2092,7 +2161,7 @@
 
         function init3D() {
             const container = document.getElementById('3d-container');
-            
+
             scene = new THREE.Scene();
             camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 100);
             camera.position.set(12, 12, 18);
@@ -2118,7 +2187,7 @@
             // Draw central L axis
             const axisGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), new THREE.Vector3(0,10,0)]);
             scene.add(new THREE.Line(axisGeo, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.2 })));
-            
+
             // Draw Chroma limit rings
             const ringMat = new THREE.LineBasicMaterial({ color: 0x64748b, transparent: true, opacity: 0.3 });
             [0, 5, 10].forEach(y => {
@@ -2221,10 +2290,10 @@
                     scene.ghostGroup.add(mesh);
                 });
             });
-            
+
             let pts = [];
             let colors = [];
-            
+
             let d2m = buildCurveData(getPointAtT1).pts;
             let m2l = buildCurveData(getPointAtT2).pts;
             let allPts = [...d2m, ...m2l];
@@ -2232,10 +2301,10 @@
             allPts.forEach(p => {
                 let r = (p.c / MAX_C) * 4;
                 let a = p.h * Math.PI / 180;
-                
+
                 // Map to ThreeJS space (X=Chroma*cosH, Z=-Chroma*sinH, Y=Lightness)
                 pts.push(new THREE.Vector3(r * Math.cos(a), p.l * 10, -r * Math.sin(a)));
-                
+
                 let hex = oklch_to_hex(p.l, p.c, p.h);
                 let color = new THREE.Color(hex);
                 colors.push(color.r, color.g, color.b);
@@ -2250,13 +2319,13 @@
                 scene.add(scene.stopSpheres);
             }
             // Cleanup old spheres
-            while(scene.stopSpheres.children.length > 0) { 
+            while(scene.stopSpheres.children.length > 0) {
                 let child = scene.stopSpheres.children[0];
-                scene.stopSpheres.remove(child); 
+                scene.stopSpheres.remove(child);
                 child.geometry.dispose();
                 if (child.material) child.material.dispose();
             }
-            
+
             if (palette) {
                 const sphereGeo = new THREE.SphereGeometry(0.35, 16, 16);
                 palette.forEach(p => {
@@ -2265,12 +2334,12 @@
                     let x = r * Math.cos(a);
                     let z = -r * Math.sin(a);
                     let y = p.l * 10;
-                    
+
                     let hex = oklch_to_hex(p.l, p.c, p.h);
                     let mat = new THREE.MeshBasicMaterial({ color: hex });
                     let mesh = new THREE.Mesh(sphereGeo, mat);
                     mesh.position.set(x, y, z);
-                    
+
                     scene.stopSpheres.add(mesh);
                 });
             }
