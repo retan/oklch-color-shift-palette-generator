@@ -162,6 +162,31 @@
         </div>
     </div>
 
+    <!-- Reset Confirmation Warning Dialog -->
+    <div id="reset-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="reset-confirm-modal-title" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-sm p-5 space-y-4">
+            <div class="flex items-start gap-3">
+                <div class="p-2 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 shrink-0 mt-0.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 id="reset-confirm-modal-title" class="text-base font-bold text-slate-100">Reset All Palettes?</h3>
+                    <p class="text-xs text-slate-400 mt-1">This will reset all palettes, stops, handles, and settings to their defaults. This action cannot be undone.</p>
+                </div>
+            </div>
+            <div class="flex items-center justify-end gap-2.5 pt-1">
+                <button type="button" id="reset-cancel-btn" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold border border-slate-700 transition-colors">
+                    Cancel
+                </button>
+                <button type="button" id="reset-confirm-btn" class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-semibold border border-red-500 transition-colors">
+                    Reset
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Top Area: Controls and Editors -->
     <div class="flex flex-col sm:flex-1 sm:min-h-0 sm:flex-row sm:overflow-hidden">
 
@@ -173,16 +198,24 @@
                         <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">OKlch Color Shift Palette Generator</h1>
                         <p class="text-xs text-slate-400 mt-1">3D curve & multi-section visualizer</p>
                     </div>
-                    <div class="flex items-center gap-1 shrink-0 pt-0.5">
-                        <button id="undo-btn" disabled title="Undo last change (Ctrl+Z)" class="p-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white disabled:opacity-35 disabled:pointer-events-none transition-colors">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a5 5 0 015 5v2M3 10l4-4m-4 4l4 4"></path>
+                    <div class="flex flex-col items-stretch gap-1.5 shrink-0 pt-0.5">
+                        <div class="flex items-center gap-1">
+                            <button id="undo-btn" disabled title="Undo last change (Ctrl+Z)" class="p-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white disabled:opacity-35 disabled:pointer-events-none transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a5 5 0 015 5v2M3 10l4-4m-4 4l4 4"></path>
+                                </svg>
+                            </button>
+                            <button id="redo-btn" disabled title="Redo last undone change (Ctrl+Y)" class="p-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white disabled:opacity-35 disabled:pointer-events-none transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10H11a5 5 0 00-5 5v2m15-7l-4-4m4 4l-4 4"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <button id="reset-btn" type="button" title="Reset all palettes to default" class="w-full py-1 px-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:bg-red-500/20 hover:text-red-300 hover:border-red-500/40 text-[11px] font-semibold transition-colors flex items-center justify-center gap-1">
+                            <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                             </svg>
-                        </button>
-                        <button id="redo-btn" disabled title="Redo last undone change (Ctrl+Y)" class="p-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white disabled:opacity-35 disabled:pointer-events-none transition-colors">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10H11a5 5 0 00-5 5v2m15-7l-4-4m4 4l-4 4"></path>
-                            </svg>
+                            <span>Reset</span>
                         </button>
                     </div>
                 </div>
@@ -403,6 +436,8 @@
         /**
          * OKlch Application State (Supports multiple independent palette rows)
          */
+        const SESSION_STORAGE_KEY = 'oklch_color_shift_session_v1';
+
         function createDefaultPaletteConfig() {
             return {
                 dark: { l: 0.2, c: 0.12, h: 260 },
@@ -443,6 +478,38 @@
 
         // Active palette reference for sidebar, 2D SVG editors, and 3D viewer
         let state = appState.palettes[0];
+
+        function saveSessionState() {
+            try {
+                const data = {
+                    version: 1,
+                    activeIndex: appState.activeIndex,
+                    tonalScale: appState.tonalScale,
+                    palettes: appState.palettes.map(clonePaletteConfig)
+                };
+                localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(data));
+            } catch (_) {
+                // Ignore storage quota or restricted browser storage errors
+            }
+        }
+
+        function loadSessionState() {
+            try {
+                const raw = localStorage.getItem(SESSION_STORAGE_KEY);
+                if (!raw) return;
+                const parsed = JSON.parse(raw);
+                if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.palettes) || parsed.palettes.length === 0) {
+                    return;
+                }
+                appState.palettes = parsed.palettes.map(sanitizePaletteConfig);
+                const nextActive = Number.isInteger(parsed.activeIndex) ? parsed.activeIndex : 0;
+                appState.activeIndex = Math.max(0, Math.min(nextActive, appState.palettes.length - 1));
+                appState.tonalScale = Boolean(parsed.tonalScale);
+                state = appState.palettes[appState.activeIndex];
+            } catch (_) {
+                // Ignore corrupted session storage data
+            }
+        }
 
         // Visual Editor UI state (Gamut overlays turned off by default)
         const uiState = {
@@ -558,6 +625,45 @@
             redoSnapshot = null;
             pendingSnapshot = null;
             updateUndoRedoButtons();
+            updateAll();
+        }
+
+        function openResetDialog() {
+            const modal = document.getElementById('reset-confirm-modal');
+            const cancelBtn = document.getElementById('reset-cancel-btn');
+            if (!modal) return;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            if (cancelBtn) {
+                requestAnimationFrame(() => cancelBtn.focus());
+            }
+        }
+
+        function closeResetDialog() {
+            const modal = document.getElementById('reset-confirm-modal');
+            if (!modal) return;
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function performReset() {
+            appState.palettes = [createDefaultPaletteConfig()];
+            appState.activeIndex = 0;
+            appState.tonalScale = false;
+            state = appState.palettes[0];
+
+            // Reset cannot be undone
+            undoSnapshot = null;
+            redoSnapshot = null;
+            pendingSnapshot = null;
+            updateUndoRedoButtons();
+
+            try {
+                localStorage.removeItem(SESSION_STORAGE_KEY);
+            } catch (_) {}
+
+            lastRenderedPaletteCount = -1;
+            lastRenderedActiveIndex = -1;
             updateAll();
         }
 
@@ -975,6 +1081,19 @@
                 }
             });
 
+            // Reset button & warning confirmation dialog
+            document.getElementById('reset-btn').addEventListener('click', openResetDialog);
+            document.getElementById('reset-cancel-btn').addEventListener('click', closeResetDialog);
+            document.getElementById('reset-confirm-btn').addEventListener('click', () => {
+                closeResetDialog();
+                performReset();
+            });
+
+            const resetConfirmModal = document.getElementById('reset-confirm-modal');
+            resetConfirmModal.addEventListener('click', (e) => {
+                if (e.target === resetConfirmModal) closeResetDialog();
+            });
+
             document.getElementById('export-json-btn').addEventListener('click', exportConfigurationJson);
 
             const importJsonBtn = document.getElementById('import-json-btn');
@@ -992,6 +1111,11 @@
             document.getElementById('undo-btn').addEventListener('click', performUndo);
             document.getElementById('redo-btn').addEventListener('click', performRedo);
             window.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && !resetConfirmModal.classList.contains('hidden')) {
+                    e.preventDefault();
+                    closeResetDialog();
+                    return;
+                }
                 const tag = document.activeElement?.tagName;
                 if (tag === 'INPUT' && (document.activeElement.type === 'text' || document.activeElement.type === 'number')) {
                     return;
@@ -2354,10 +2478,12 @@
             let generatedPalette = generatePalette(state);
             renderAllPaletteRows(generatedPalette, skipStepsInput);
             update3D(generatedPalette);
+            saveSessionState();
         }
 
         // App Initialization
         window.onload = () => {
+            loadSessionState();
             initSidebar();
             renderHCBackground(); // Draws the polar background once (gamut overlay off by default)
             drawGrids();
