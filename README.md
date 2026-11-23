@@ -2,7 +2,7 @@
 
 An interactive, browser-based color palette studio specifically designed to create complex palettes with expressive **hue and chroma shifts**. Built around the **OKlch** and **OKlab** perceptual color spaces, it lets you sculpt smooth, perceptually uniform color ramps using 2D cross-section Bezier editors, inspect sRGB gamut boundaries, view palettes in an interactive 3D cylindrical space, manage multiple palette rows side by side, and export directly to **Infinite Painter** (`.clrs`) or **JSON**.
 
-> **Live Demo:** [Demo](https://retan.github.io/oklch-pallete-generator/)
+> **Live Demo:** [Demo](https://retan.github.io/oklch-color-shift-palette-generator/)
 
 ## Features
 
