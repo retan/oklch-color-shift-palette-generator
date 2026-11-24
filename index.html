@@ -227,11 +227,16 @@
                     <!-- Dynamic content injected here to keep HTML DRY -->
                 </div>
 
-                <!-- Tonal Color Scale Switch (affects all generated palettes) -->
-                <div class="pt-4 border-t border-slate-800">
+                <!-- Tonal Color Scale & Value Check Switches -->
+                <div class="pt-4 border-t border-slate-800 space-y-2.5">
                     <label class="flex items-center justify-between gap-3 bg-slate-950 px-3.5 py-2.5 rounded-lg border border-slate-800 hover:border-slate-700 cursor-pointer select-none transition-colors" title="Weight end intervals to half the spacing of interior intervals">
                         <span class="text-sm font-semibold text-slate-300">Tonal Color Scale</span>
                         <input type="checkbox" id="tonal-scale-toggle" class="sr-only peer">
+                        <span class="relative w-9 h-5 bg-slate-700 rounded-full transition-colors peer-checked:bg-blue-500 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-transform peer-checked:after:translate-x-4"></span>
+                    </label>
+                    <label class="flex items-center justify-between gap-3 bg-slate-950 px-3.5 py-2.5 rounded-lg border border-slate-800 hover:border-slate-700 cursor-pointer select-none transition-colors" title="Preview colors as grayscale values determined by OKlch Lightness">
+                        <span class="text-sm font-semibold text-slate-300">Value (Grayscale) Preview</span>
+                        <input type="checkbox" id="value-check-toggle" class="sr-only peer">
                         <span class="relative w-9 h-5 bg-slate-700 rounded-full transition-colors peer-checked:bg-blue-500 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-transform peer-checked:after:translate-x-4"></span>
                     </label>
                 </div>
@@ -510,11 +515,11 @@
                 // Ignore corrupted session storage data
             }
         }
-
-        // Visual Editor UI state (Gamut overlays turned off by default)
+        // Visual Editor UI state (Gamut overlays and Value Check turned off by default)
         const uiState = {
             showGamutLC: false,
             showGamutHC: false,
+            valueCheck: false,
             expandedEditor: null // 'LC' | 'HC' | null
         };
 
@@ -650,6 +655,7 @@
             appState.palettes = [createDefaultPaletteConfig()];
             appState.activeIndex = 0;
             appState.tonalScale = false;
+            uiState.valueCheck = false;
             state = appState.palettes[0];
 
             // Reset cannot be undone
@@ -760,6 +766,11 @@
             let g_h = Math.round(g * 255).toString(16).padStart(2, '0');
             let b_h = Math.round(b * 255).toString(16).padStart(2, '0');
             return `#${r_h}${g_h}${b_h}`;
+        }
+
+        // Convert OKlch to display hex, collapsing Chroma to 0 when Value Check is enabled
+        function getPreviewHex(l, c, h) {
+            return oklch_to_hex(l, uiState.valueCheck ? 0 : c, h);
         }
 
         // sRGB Hex -> OKlch (For color picker & text input syncing)
@@ -1220,6 +1231,12 @@
                 updateAll();
             });
 
+            // Value (Grayscale) Check preview switch
+            document.getElementById('value-check-toggle').addEventListener('change', (e) => {
+                uiState.valueCheck = e.target.checked;
+                updateAll();
+            });
+
             // Add new palette row (clones the previous row and selects the newly added row)
             document.getElementById('add-palette-btn').addEventListener('click', addPaletteRow);
         }
@@ -1467,6 +1484,11 @@
             if (tonalToggle) {
                 tonalToggle.checked = Boolean(appState.tonalScale);
             }
+
+            const valueCheckToggle = document.getElementById('value-check-toggle');
+            if (valueCheckToggle) {
+                valueCheckToggle.checked = Boolean(uiState.valueCheck);
+            }
         }
 
         // Coordinates Mapping to SVG dimensions (300x300 canvas)
@@ -1538,13 +1560,15 @@
 
         let cachedHCGamut = null;
         let cachedHCSize = null;
+        let cachedHCValueCheck = null;
         function renderHCBackground() {
             // HC Background - Radial distance = chroma, Angle = Hue (Lightness locked at 0.5).
             // When Gamut preview is enabled, areas outside the sRGB gamut are overlaid with black at 50% opacity.
             const size = uiState.expandedEditor === 'HC' ? 540 : 300;
-            if (cachedHCGamut === uiState.showGamutHC && cachedHCSize === size) return;
+            if (cachedHCGamut === uiState.showGamutHC && cachedHCSize === size && cachedHCValueCheck === uiState.valueCheck) return;
             cachedHCGamut = uiState.showGamutHC;
             cachedHCSize = size;
+            cachedHCValueCheck = uiState.valueCheck;
 
             const hcCanvas = document.getElementById('bg-hc');
             hcCanvas.width = size;
@@ -1573,9 +1597,10 @@
                         lin.b >= -eps && lin.b <= 1 + eps
                     );
 
-                    let sr = Math.max(0, Math.min(1, linear_srgb_to_srgb(Math.max(0, Math.min(1, lin.r))))) * 255;
-                    let sg = Math.max(0, Math.min(1, linear_srgb_to_srgb(Math.max(0, Math.min(1, lin.g))))) * 255;
-                    let sb = Math.max(0, Math.min(1, linear_srgb_to_srgb(Math.max(0, Math.min(1, lin.b))))) * 255;
+                    let dispLin = uiState.valueCheck ? oklab_to_linear_srgb(0.5, 0, 0) : lin;
+                    let sr = Math.max(0, Math.min(1, linear_srgb_to_srgb(Math.max(0, Math.min(1, dispLin.r))))) * 255;
+                    let sg = Math.max(0, Math.min(1, linear_srgb_to_srgb(Math.max(0, Math.min(1, dispLin.g))))) * 255;
+                    let sb = Math.max(0, Math.min(1, linear_srgb_to_srgb(Math.max(0, Math.min(1, dispLin.b))))) * 255;
 
                     let idx = (y * size + x) * 4;
                     if (inGamut) {
@@ -1597,14 +1622,16 @@
         let cachedMidHue = null;
         let cachedLCGamut = null;
         let cachedLCSize = null;
+        let cachedLCValueCheck = null;
         function renderLCBackground() {
             // LC Background - Lightness changes vertically, hue syncs with middle stop.
             // When Gamut preview is enabled, areas outside the sRGB gamut at the middle stop's hue are overlaid with black at 50% opacity.
             const size = uiState.expandedEditor === 'LC' ? 540 : 300;
-            if (cachedMidHue === state.mid.h && cachedLCGamut === uiState.showGamutLC && cachedLCSize === size) return;
+            if (cachedMidHue === state.mid.h && cachedLCGamut === uiState.showGamutLC && cachedLCSize === size && cachedLCValueCheck === uiState.valueCheck) return;
             cachedMidHue = state.mid.h;
             cachedLCGamut = uiState.showGamutLC;
             cachedLCSize = size;
+            cachedLCValueCheck = uiState.valueCheck;
 
             const lcCanvas = document.getElementById('bg-lc');
             lcCanvas.width = size;
@@ -1629,9 +1656,10 @@
                         lin.b >= -eps && lin.b <= 1 + eps
                     );
 
-                    let sr = Math.max(0, Math.min(1, linear_srgb_to_srgb(Math.max(0, Math.min(1, lin.r))))) * 255;
-                    let sg = Math.max(0, Math.min(1, linear_srgb_to_srgb(Math.max(0, Math.min(1, lin.g))))) * 255;
-                    let sb = Math.max(0, Math.min(1, linear_srgb_to_srgb(Math.max(0, Math.min(1, lin.b))))) * 255;
+                    let dispLin = uiState.valueCheck ? oklab_to_linear_srgb(l, 0, 0) : lin;
+                    let sr = Math.max(0, Math.min(1, linear_srgb_to_srgb(Math.max(0, Math.min(1, dispLin.r))))) * 255;
+                    let sg = Math.max(0, Math.min(1, linear_srgb_to_srgb(Math.max(0, Math.min(1, dispLin.g))))) * 255;
+                    let sb = Math.max(0, Math.min(1, linear_srgb_to_srgb(Math.max(0, Math.min(1, dispLin.b))))) * 255;
 
                     let idx = (y * size + x) * 4;
                     if (inGamut) {
@@ -1687,7 +1715,7 @@
                 let hcStopsHtml = '';
                 keys.forEach(k => {
                     const pt = cfg[k];
-                    const hex = oklch_to_hex(pt.l, pt.c, pt.h);
+                    const hex = getPreviewHex(pt.l, pt.c, pt.h);
                     const lx = mapLC_X(pt.c);
                     const ly = mapLC_Y(pt.l);
                     const hx = mapHC_X(pt.c, pt.h);
@@ -1768,7 +1796,7 @@
             // Inner Nodes Colors
             ['d', 'm', 'l'].forEach(k => {
                 let pt = state[k === 'd' ? 'dark' : (k === 'm' ? 'mid' : 'light')];
-                let hex = oklch_to_hex(pt.l, pt.c, pt.h);
+                let hex = getPreviewHex(pt.l, pt.c, pt.h);
                 document.getElementById(`lc-${k}-inner`).style.color = hex;
                 document.getElementById(`hc-${k}-inner`).style.color = hex;
                 setPt(`lc-${k}-inner`, mapLC_X(pt.c), mapLC_Y(pt.l));
@@ -2102,6 +2130,7 @@
             swatchesEl.innerHTML = '';
             palette.forEach((p, i) => {
                 const hex = oklch_to_hex(p.l, p.c, p.h);
+                const previewHex = getPreviewHex(p.l, p.c, p.h);
                 const swatch = document.createElement('div');
                 swatch.className = 'flex flex-col items-center gap-1 shrink-0 snap-center transition-transform hover:-translate-y-1 cursor-pointer group';
                 swatch.title = `Click to copy ${hex.toUpperCase()}`;
@@ -2113,7 +2142,7 @@
                 else label = `Stop ${i + 1}`;
 
                 swatch.innerHTML = `
-                    <div class="swatch-color-box relative w-12 h-12 sm:w-16 sm:h-14 rounded-lg shadow border border-white/10 group-hover:ring-2 group-hover:ring-white/40 transition-shadow overflow-hidden" style="background-color: ${hex}"></div>
+                    <div class="swatch-color-box relative w-12 h-12 sm:w-16 sm:h-14 rounded-lg shadow border border-white/10 group-hover:ring-2 group-hover:ring-white/40 transition-shadow overflow-hidden" style="background-color: ${previewHex}"></div>
                     <span class="text-[10px] font-mono text-slate-300 group-hover:text-white uppercase">${hex}</span>
                     <span class="text-[9px] text-slate-500 font-bold tracking-wider uppercase">${label}</span>
                 `;
@@ -2378,7 +2407,7 @@
                     let a = p.h * Math.PI / 180;
                     gPts.push(new THREE.Vector3(r * Math.cos(a), p.l * 10, -r * Math.sin(a)));
 
-                    let hex = oklch_to_hex(p.l, p.c, p.h);
+                    let hex = getPreviewHex(p.l, p.c, p.h);
                     let color = new THREE.Color(hex);
                     gColors.push(color.r, color.g, color.b);
                 });
@@ -2402,7 +2431,7 @@
                     let z = -r * Math.sin(a);
                     let y = p.l * 10;
 
-                    let hex = oklch_to_hex(p.l, p.c, p.h);
+                    let hex = getPreviewHex(p.l, p.c, p.h);
                     let mat = new THREE.MeshBasicMaterial({
                         color: hex,
                         transparent: true,
@@ -2429,7 +2458,7 @@
                 // Map to ThreeJS space (X=Chroma*cosH, Z=-Chroma*sinH, Y=Lightness)
                 pts.push(new THREE.Vector3(r * Math.cos(a), p.l * 10, -r * Math.sin(a)));
 
-                let hex = oklch_to_hex(p.l, p.c, p.h);
+                let hex = getPreviewHex(p.l, p.c, p.h);
                 let color = new THREE.Color(hex);
                 colors.push(color.r, color.g, color.b);
             });
@@ -2459,7 +2488,7 @@
                     let z = -r * Math.sin(a);
                     let y = p.l * 10;
 
-                    let hex = oklch_to_hex(p.l, p.c, p.h);
+                    let hex = getPreviewHex(p.l, p.c, p.h);
                     let mat = new THREE.MeshBasicMaterial({ color: hex });
                     let mesh = new THREE.Mesh(sphereGeo, mat);
                     mesh.position.set(x, y, z);
@@ -2474,7 +2503,8 @@
             state = appState.palettes[appState.activeIndex];
             syncSidebar(skipInputId);
             updateSVGs();
-            renderLCBackground(); // dynamically updates the LC background if the mid hue changed
+            renderLCBackground(); // dynamically updates the LC background if the mid hue or value check changed
+            renderHCBackground(); // dynamically updates the HC background if value check changed
             let generatedPalette = generatePalette(state);
             renderAllPaletteRows(generatedPalette, skipStepsInput);
             update3D(generatedPalette);
