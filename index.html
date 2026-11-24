@@ -227,14 +227,14 @@
                     <!-- Dynamic content injected here to keep HTML DRY -->
                 </div>
 
-                <!-- Tonal Color Scale & Value Check Switches -->
+                <!-- Tonal Color Scale, Gamut Mapping & Value Check Switches -->
                 <div class="pt-4 border-t border-slate-800 space-y-2.5">
                     <label class="flex items-center justify-between gap-3 bg-slate-950 px-3.5 py-2.5 rounded-lg border border-slate-800 hover:border-slate-700 cursor-pointer select-none transition-colors" title="Weight end intervals to half the spacing of interior intervals">
                         <span class="text-sm font-semibold text-slate-300">Tonal Color Scale</span>
                         <input type="checkbox" id="tonal-scale-toggle" class="sr-only peer">
                         <span class="relative w-9 h-5 shrink-0 bg-slate-700 rounded-full transition-colors peer-checked:bg-blue-500 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-transform peer-checked:after:translate-x-4"></span>
                     </label>
-                    <label class="flex items-center justify-between gap-3 bg-slate-950 px-3.5 py-2.5 rounded-lg border border-slate-800 hover:border-slate-700 cursor-pointer select-none transition-colors" title="Map out-of-gamut colors into sRGB by reducing chroma while preserving OKlch Hue and Lightness">
+                    <label class="flex items-center justify-between gap-3 bg-slate-950 px-3.5 py-2.5 rounded-lg border border-slate-800 hover:border-slate-700 cursor-pointer select-none transition-colors" title="Map out-of-gamut colors into sRGB by reducing chroma while preserving OKlch Hue and Lightness, and shade out-of-gamut regions in 2D editors">
                         <span class="text-sm font-semibold text-slate-300">Gamut Mapping</span>
                         <input type="checkbox" id="hue-gamut-toggle" class="sr-only peer">
                         <span class="relative w-9 h-5 shrink-0 bg-slate-700 rounded-full transition-colors peer-checked:bg-blue-500 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-transform peer-checked:after:translate-x-4"></span>
@@ -257,19 +257,12 @@
                 <div id="card-lc" class="editor-card flex flex-col items-center bg-slate-900/50 p-4 rounded-xl border border-slate-800">
                     <div id="lc-header" class="editor-header w-full flex flex-wrap items-center justify-between gap-2 mb-4">
                         <h2 class="text-sm font-semibold text-slate-300 tracking-wider uppercase">Lightness vs Chroma</h2>
-                        <div class="flex items-center gap-2">
-                            <label class="inline-flex items-center gap-1.5 cursor-pointer select-none bg-slate-800/80 hover:bg-slate-800 px-2 py-1 rounded-lg border border-slate-700/80 transition-colors" title="Toggle sRGB gamut boundary overlay">
-                                <input type="checkbox" id="gamut-toggle-lc" class="sr-only peer">
-                                <span class="relative w-7 h-4 bg-slate-700 rounded-full transition-colors peer-checked:bg-blue-500 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-transform peer-checked:after:translate-x-3"></span>
-                                <span class="text-[11px] font-medium text-slate-400 peer-checked:text-slate-200">Gamut</span>
-                            </label>
-                            <button id="expand-lc-btn" type="button" class="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-medium border border-slate-700/80 transition-colors" title="Expand editor to full viewport">
-                                <svg id="expand-lc-icon" class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
-                                </svg>
-                                <span id="expand-lc-label">Expand</span>
-                            </button>
-                        </div>
+                        <button id="expand-lc-btn" type="button" class="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-medium border border-slate-700/80 transition-colors" title="Expand editor to full viewport">
+                            <svg id="expand-lc-icon" class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
+                            </svg>
+                            <span id="expand-lc-label">Expand</span>
+                        </button>
                     </div>
                     <div id="lc-stage" class="editor-stage relative w-full max-w-[300px] aspect-square rounded-lg shadow-inner border border-slate-700/50 overflow-hidden">
                         <canvas id="bg-lc" width="300" height="300" class="absolute inset-0 w-full h-full"></canvas>
@@ -328,19 +321,12 @@
                 <div id="card-hc" class="editor-card flex flex-col items-center bg-slate-900/50 p-4 rounded-xl border border-slate-800">
                     <div id="hc-header" class="editor-header w-full flex flex-wrap items-center justify-between gap-2 mb-4">
                         <h2 class="text-sm font-semibold text-slate-300 tracking-wider uppercase">Hue vs Chroma (Polar)</h2>
-                        <div class="flex items-center gap-2">
-                            <label class="inline-flex items-center gap-1.5 cursor-pointer select-none bg-slate-800/80 hover:bg-slate-800 px-2 py-1 rounded-lg border border-slate-700/80 transition-colors" title="Toggle sRGB gamut boundary overlay at L=0.5">
-                                <input type="checkbox" id="gamut-toggle-hc" class="sr-only peer">
-                                <span class="relative w-7 h-4 bg-slate-700 rounded-full transition-colors peer-checked:bg-blue-500 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-transform peer-checked:after:translate-x-3"></span>
-                                <span class="text-[11px] font-medium text-slate-400 peer-checked:text-slate-200">Gamut</span>
-                            </label>
-                            <button id="expand-hc-btn" type="button" class="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-medium border border-slate-700/80 transition-colors" title="Expand editor to full viewport">
-                                <svg id="expand-hc-icon" class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
-                                </svg>
-                                <span id="expand-hc-label">Expand</span>
-                            </button>
-                        </div>
+                        <button id="expand-hc-btn" type="button" class="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-medium border border-slate-700/80 transition-colors" title="Expand editor to full viewport">
+                            <svg id="expand-hc-icon" class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
+                            </svg>
+                            <span id="expand-hc-label">Expand</span>
+                        </button>
                     </div>
                     <div id="hc-stage" class="editor-stage relative w-full max-w-[300px] aspect-square rounded-full shadow-inner border border-slate-700/50 overflow-hidden">
                         <canvas id="bg-hc" width="300" height="300" class="absolute inset-0 w-full h-full"></canvas>
@@ -523,10 +509,9 @@
                 // Ignore corrupted session storage data
             }
         }
-        // Visual Editor UI state (Gamut overlays and Value Check turned off by default)
+
+        // Visual Editor UI state (Value Check turned off by default)
         const uiState = {
-            showGamutLC: false,
-            showGamutHC: false,
             valueCheck: false,
             expandedEditor: null // 'LC' | 'HC' | null
         };
@@ -1209,21 +1194,6 @@
                 }
             });
 
-            // Gamut preview toggle switches (off by default)
-            const gamutToggleLC = document.getElementById('gamut-toggle-lc');
-            const gamutToggleHC = document.getElementById('gamut-toggle-hc');
-            gamutToggleLC.checked = uiState.showGamutLC;
-            gamutToggleHC.checked = uiState.showGamutHC;
-
-            gamutToggleLC.addEventListener('change', (e) => {
-                uiState.showGamutLC = e.target.checked;
-                renderLCBackground();
-            });
-            gamutToggleHC.addEventListener('change', (e) => {
-                uiState.showGamutHC = e.target.checked;
-                renderHCBackground();
-            });
-
             // Expand / Collapse buttons for each visual editor
             document.getElementById('expand-lc-btn').addEventListener('click', () => {
                 setExpandedEditor(uiState.expandedEditor === 'LC' ? null : 'LC');
@@ -1294,7 +1264,7 @@
                 updateAll();
             });
 
-            // Gamut Mapping switch (affects sRGB mapping across all generated palettes and dims out-of-gamut regions in 2D editors)
+            // Gamut Mapping switch (affects sRGB mapping across all generated palettes and shades out-of-gamut regions in 2D editors)
             document.getElementById('hue-gamut-toggle').addEventListener('change', (e) => {
                 recordImmediateUndo();
                 appState.huePreservingGamut = e.target.checked;
@@ -1636,10 +1606,8 @@
 
             // Re-render background canvases at higher resolution when expanded for sharp gamut edges
             cachedMidHue = null;
-            cachedLCGamut = null;
             cachedLCSize = null;
             cachedLCHueGamutMap = null;
-            cachedHCGamut = null;
             cachedHCSize = null;
             cachedHCHueGamutMap = null;
             cachedHCGamutL = null;
@@ -1647,26 +1615,21 @@
             renderHCBackground();
         }
 
-        let cachedHCGamut = null;
         let cachedHCSize = null;
         let cachedHCValueCheck = null;
         let cachedHCHueGamutMap = null;
         let cachedHCGamutL = null;
         function renderHCBackground() {
             // HC Background - Radial distance = chroma, Angle = Hue (Base color wheel at L=0.5).
-            // When Gamut toggle or Gamut Mapping is enabled, areas outside the sRGB gamut are overlaid with black at 50% opacity
-            // (evaluated at the Middle Stop's lightness when Gamut Mapping is active, or L=0.5 otherwise).
+            // When Gamut Mapping is enabled, areas outside the sRGB gamut at the Middle Stop's lightness are overlaid with black at 50% opacity.
             const size = uiState.expandedEditor === 'HC' ? 540 : 300;
-            const dimOutOfGamut = uiState.showGamutHC || appState.huePreservingGamut;
             const gamutL = appState.huePreservingGamut ? state.mid.l : 0.5;
             if (
-                cachedHCGamut === uiState.showGamutHC &&
                 cachedHCSize === size &&
                 cachedHCValueCheck === uiState.valueCheck &&
                 cachedHCHueGamutMap === appState.huePreservingGamut &&
                 cachedHCGamutL === gamutL
             ) return;
-            cachedHCGamut = uiState.showGamutHC;
             cachedHCSize = size;
             cachedHCValueCheck = uiState.valueCheck;
             cachedHCHueGamutMap = appState.huePreservingGamut;
@@ -1700,7 +1663,7 @@
                     );
 
                     let withinGamutSrgb = withinBaseSrgb;
-                    if (dimOutOfGamut && gamutL !== 0.5) {
+                    if (appState.huePreservingGamut && gamutL !== 0.5) {
                         let gamutLin = oklab_to_linear_srgb(gamutL, c * cosH, c * sinH);
                         withinGamutSrgb = (
                             gamutLin.r >= -eps && gamutLin.r <= 1 + eps &&
@@ -1709,7 +1672,7 @@
                         );
                     }
 
-                    let inGamut = !dimOutOfGamut || withinGamutSrgb;
+                    let inGamut = !appState.huePreservingGamut || withinGamutSrgb;
                     let lin = rawLin;
                     if (appState.huePreservingGamut && !withinBaseSrgb) {
                         let aDeg = Math.atan2(dy, dx) * 180 / Math.PI;
@@ -1740,24 +1703,20 @@
         }
 
         let cachedMidHue = null;
-        let cachedLCGamut = null;
         let cachedLCSize = null;
         let cachedLCValueCheck = null;
         let cachedLCHueGamutMap = null;
         function renderLCBackground() {
             // LC Background - Lightness changes vertically, hue syncs with middle stop.
-            // When Gamut toggle or Gamut Mapping is enabled, areas outside the sRGB gamut at the middle stop's hue are overlaid with black at 50% opacity.
+            // When Gamut Mapping is enabled, areas outside the sRGB gamut at the middle stop's hue are overlaid with black at 50% opacity.
             const size = uiState.expandedEditor === 'LC' ? 540 : 300;
-            const dimOutOfGamut = uiState.showGamutLC || appState.huePreservingGamut;
             if (
                 cachedMidHue === state.mid.h &&
-                cachedLCGamut === uiState.showGamutLC &&
                 cachedLCSize === size &&
                 cachedLCValueCheck === uiState.valueCheck &&
                 cachedLCHueGamutMap === appState.huePreservingGamut
             ) return;
             cachedMidHue = state.mid.h;
-            cachedLCGamut = uiState.showGamutLC;
             cachedLCSize = size;
             cachedLCValueCheck = uiState.valueCheck;
             cachedLCHueGamutMap = appState.huePreservingGamut;
@@ -1808,7 +1767,7 @@
                         rawLin.b >= -eps && rawLin.b <= 1 + eps
                     );
 
-                    let inGamut = !dimOutOfGamut || withinSrgb;
+                    let inGamut = !appState.huePreservingGamut || withinSrgb;
                     let lin = appState.huePreservingGamut
                         ? oklab_to_linear_srgb(l, Math.min(c, rowMaxC) * cosH, Math.min(c, rowMaxC) * sinH)
                         : rawLin;
@@ -2672,7 +2631,7 @@
         window.onload = () => {
             loadSessionState();
             initSidebar();
-            renderHCBackground(); // Draws the polar background once (gamut overlay off by default)
+            renderHCBackground(); // Draws the polar background once
             drawGrids();
             initInteractions();
             init3D();
