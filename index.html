@@ -232,12 +232,17 @@
                     <label class="flex items-center justify-between gap-3 bg-slate-950 px-3.5 py-2.5 rounded-lg border border-slate-800 hover:border-slate-700 cursor-pointer select-none transition-colors" title="Weight end intervals to half the spacing of interior intervals">
                         <span class="text-sm font-semibold text-slate-300">Tonal Color Scale</span>
                         <input type="checkbox" id="tonal-scale-toggle" class="sr-only peer">
-                        <span class="relative w-9 h-5 bg-slate-700 rounded-full transition-colors peer-checked:bg-blue-500 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-transform peer-checked:after:translate-x-4"></span>
+                        <span class="relative w-9 h-5 shrink-0 bg-slate-700 rounded-full transition-colors peer-checked:bg-blue-500 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-transform peer-checked:after:translate-x-4"></span>
+                    </label>
+                    <label class="flex items-center justify-between gap-3 bg-slate-950 px-3.5 py-2.5 rounded-lg border border-slate-800 hover:border-slate-700 cursor-pointer select-none transition-colors" title="Map out-of-gamut colors into sRGB by reducing chroma while preserving OKlch Hue and Lightness">
+                        <span class="text-sm font-semibold text-slate-300">Hue-Preserving Gamut Mapping</span>
+                        <input type="checkbox" id="hue-gamut-toggle" class="sr-only peer">
+                        <span class="relative w-9 h-5 shrink-0 bg-slate-700 rounded-full transition-colors peer-checked:bg-blue-500 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-transform peer-checked:after:translate-x-4"></span>
                     </label>
                     <label class="flex items-center justify-between gap-3 bg-slate-950 px-3.5 py-2.5 rounded-lg border border-slate-800 hover:border-slate-700 cursor-pointer select-none transition-colors" title="Preview colors as grayscale values determined by OKlch Lightness">
                         <span class="text-sm font-semibold text-slate-300">Value (Grayscale) Preview</span>
                         <input type="checkbox" id="value-check-toggle" class="sr-only peer">
-                        <span class="relative w-9 h-5 bg-slate-700 rounded-full transition-colors peer-checked:bg-blue-500 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-transform peer-checked:after:translate-x-4"></span>
+                        <span class="relative w-9 h-5 shrink-0 bg-slate-700 rounded-full transition-colors peer-checked:bg-blue-500 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-transform peer-checked:after:translate-x-4"></span>
                     </label>
                 </div>
             </div>
@@ -478,7 +483,8 @@
         const appState = {
             palettes: [createDefaultPaletteConfig()],
             activeIndex: 0,
-            tonalScale: false
+            tonalScale: false,
+            huePreservingGamut: false
         };
 
         // Active palette reference for sidebar, 2D SVG editors, and 3D viewer
@@ -490,6 +496,7 @@
                     version: 1,
                     activeIndex: appState.activeIndex,
                     tonalScale: appState.tonalScale,
+                    huePreservingGamut: appState.huePreservingGamut,
                     palettes: appState.palettes.map(clonePaletteConfig)
                 };
                 localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(data));
@@ -510,6 +517,7 @@
                 const nextActive = Number.isInteger(parsed.activeIndex) ? parsed.activeIndex : 0;
                 appState.activeIndex = Math.max(0, Math.min(nextActive, appState.palettes.length - 1));
                 appState.tonalScale = Boolean(parsed.tonalScale);
+                appState.huePreservingGamut = Boolean(parsed.huePreservingGamut);
                 state = appState.palettes[appState.activeIndex];
             } catch (_) {
                 // Ignore corrupted session storage data
@@ -566,7 +574,8 @@
             return {
                 palettes: appState.palettes.map(clonePaletteConfig),
                 activeIndex: appState.activeIndex,
-                tonalScale: appState.tonalScale
+                tonalScale: appState.tonalScale,
+                huePreservingGamut: appState.huePreservingGamut
             };
         }
 
@@ -575,6 +584,7 @@
             appState.palettes = snap.palettes.map(clonePaletteConfig);
             appState.activeIndex = Math.max(0, Math.min(snap.activeIndex, appState.palettes.length - 1));
             appState.tonalScale = Boolean(snap.tonalScale);
+            appState.huePreservingGamut = Boolean(snap.huePreservingGamut);
             state = appState.palettes[appState.activeIndex];
         }
 
@@ -655,6 +665,7 @@
             appState.palettes = [createDefaultPaletteConfig()];
             appState.activeIndex = 0;
             appState.tonalScale = false;
+            appState.huePreservingGamut = false;
             uiState.valueCheck = false;
             state = appState.palettes[0];
 
@@ -756,9 +767,61 @@
             return Math.sign(c) * val;
         }
 
+        // Map out-of-gamut OKlch (l, c, h) to linear sRGB by reducing chroma at constant Lightness and Hue
+        function gamut_map_oklch_to_linear_srgb(l, c, h) {
+            if (l <= 0) return { r: 0, g: 0, b: 0 };
+            if (l >= 1) return { r: 1, g: 1, b: 1 };
+
+            const hRad = h * Math.PI / 180;
+            const cosH = Math.cos(hRad);
+            const sinH = Math.sin(hRad);
+            const eps = 1e-6;
+
+            let lin = oklab_to_linear_srgb(l, c * cosH, c * sinH);
+            if (
+                lin.r >= -eps && lin.r <= 1 + eps &&
+                lin.g >= -eps && lin.g <= 1 + eps &&
+                lin.b >= -eps && lin.b <= 1 + eps
+            ) {
+                return {
+                    r: Math.max(0, Math.min(1, lin.r)),
+                    g: Math.max(0, Math.min(1, lin.g)),
+                    b: Math.max(0, Math.min(1, lin.b))
+                };
+            }
+
+            let lo = 0;
+            let hi = Math.max(0, c);
+            for (let i = 0; i < 24; i++) {
+                const mid = 0.5 * (lo + hi);
+                const test = oklab_to_linear_srgb(l, mid * cosH, mid * sinH);
+                if (
+                    test.r >= 0 && test.r <= 1 &&
+                    test.g >= 0 && test.g <= 1 &&
+                    test.b >= 0 && test.b <= 1
+                ) {
+                    lo = mid;
+                } else {
+                    hi = mid;
+                }
+            }
+
+            lin = oklab_to_linear_srgb(l, lo * cosH, lo * sinH);
+            return {
+                r: Math.max(0, Math.min(1, lin.r)),
+                g: Math.max(0, Math.min(1, lin.g)),
+                b: Math.max(0, Math.min(1, lin.b))
+            };
+        }
+
         function oklch_to_hex(l, c, h) {
-            let lab = oklch_to_oklab(l, c, h);
-            let lin = oklab_to_linear_srgb(lab.L, lab.a, lab.b);
+            let lin;
+            if (appState.huePreservingGamut) {
+                lin = gamut_map_oklch_to_linear_srgb(l, c, h);
+            } else {
+                let lab = oklch_to_oklab(l, c, h);
+                lin = oklab_to_linear_srgb(lab.L, lab.a, lab.b);
+            }
             let r = Math.max(0, Math.min(1, linear_srgb_to_srgb(lin.r)));
             let g = Math.max(0, Math.min(1, linear_srgb_to_srgb(lin.g)));
             let b = Math.max(0, Math.min(1, linear_srgb_to_srgb(lin.b)));
@@ -1231,6 +1294,13 @@
                 updateAll();
             });
 
+            // Hue-Preserving Gamut Mapping switch (affects sRGB mapping across all generated palettes)
+            document.getElementById('hue-gamut-toggle').addEventListener('change', (e) => {
+                recordImmediateUndo();
+                appState.huePreservingGamut = e.target.checked;
+                updateAll();
+            });
+
             // Value (Grayscale) Check preview switch
             document.getElementById('value-check-toggle').addEventListener('change', (e) => {
                 uiState.valueCheck = e.target.checked;
@@ -1378,6 +1448,7 @@
                 version: 1,
                 activeIndex: appState.activeIndex,
                 tonalScale: appState.tonalScale,
+                huePreservingGamut: appState.huePreservingGamut,
                 palettes: appState.palettes.map(clonePaletteConfig)
             };
             const payload = JSON.stringify(data, null, 2);
@@ -1424,6 +1495,9 @@
                     if (typeof parsed.tonalScale === 'boolean') {
                         appState.tonalScale = parsed.tonalScale;
                     }
+                    if (typeof parsed.huePreservingGamut === 'boolean') {
+                        appState.huePreservingGamut = parsed.huePreservingGamut;
+                    }
                     state = appState.palettes[appState.activeIndex];
                     updateAll();
                 } catch (err) {
@@ -1460,29 +1534,29 @@
                 }
 
                 // Handle Locks UI
-                let isLocked = state.locked[k];
-                document.getElementById(`lock-icon-${k}`).innerHTML = isLocked ? lockSvgClosed : lockSvgOpen;
-                document.getElementById(`lock-${k}`).className = isLocked ? "text-white transition-colors p-1" : "text-slate-500 hover:text-white transition-colors p-1";
-                document.getElementById(`section-${k}`).style.opacity = isLocked ? "0.6" : "1";
-
-                ['l', 'c', 'h', 'hex', 'text', 'val-l', 'val-c', 'val-h'].forEach(prop => {
-                    document.getElementById(`${prop}-${k}`).disabled = isLocked;
-                });
-
-                // Dynamic slider backgrounds
-                document.getElementById(`l-${k}`).style.background = `linear-gradient(to right, oklch(0 ${state[k].c} ${state[k].h}), oklch(1 ${state[k].c} ${state[k].h}))`;
-                document.getElementById(`c-${k}`).style.background = `linear-gradient(to right, oklch(${state[k].l} 0 ${state[k].h}), oklch(${state[k].l} ${MAX_C} ${state[k].h}))`;
-
+                // Dynamic slider backgrounds (synced with active gamut mapping mode)
+                let lGrad = [];
+                let cGrad = [];
                 let hGrad = [];
-                for(let i=0; i<=6; i++) {
-                    hGrad.push(`oklch(${state[k].l} ${state[k].c} ${i*60})`);
+                for (let i = 0; i <= 12; i++) {
+                    const t = i / 12;
+                    lGrad.push(oklch_to_hex(t, state[k].c, state[k].h));
+                    cGrad.push(oklch_to_hex(state[k].l, t * MAX_C, state[k].h));
+                    hGrad.push(oklch_to_hex(state[k].l, state[k].c, t * 360));
                 }
+                document.getElementById(`l-${k}`).style.background = `linear-gradient(to right, ${lGrad.join(', ')})`;
+                document.getElementById(`c-${k}`).style.background = `linear-gradient(to right, ${cGrad.join(', ')})`;
                 document.getElementById(`h-${k}`).style.background = `linear-gradient(to right, ${hGrad.join(', ')})`;
             });
 
             const tonalToggle = document.getElementById('tonal-scale-toggle');
             if (tonalToggle) {
                 tonalToggle.checked = Boolean(appState.tonalScale);
+            }
+
+            const hueGamutToggle = document.getElementById('hue-gamut-toggle');
+            if (hueGamutToggle) {
+                hueGamutToggle.checked = Boolean(appState.huePreservingGamut);
             }
 
             const valueCheckToggle = document.getElementById('value-check-toggle');
@@ -1552,8 +1626,10 @@
             cachedMidHue = null;
             cachedLCGamut = null;
             cachedLCSize = null;
+            cachedLCHueGamutMap = null;
             cachedHCGamut = null;
             cachedHCSize = null;
+            cachedHCHueGamutMap = null;
             renderLCBackground();
             renderHCBackground();
         }
@@ -1561,14 +1637,21 @@
         let cachedHCGamut = null;
         let cachedHCSize = null;
         let cachedHCValueCheck = null;
+        let cachedHCHueGamutMap = null;
         function renderHCBackground() {
             // HC Background - Radial distance = chroma, Angle = Hue (Lightness locked at 0.5).
             // When Gamut preview is enabled, areas outside the sRGB gamut are overlaid with black at 50% opacity.
             const size = uiState.expandedEditor === 'HC' ? 540 : 300;
-            if (cachedHCGamut === uiState.showGamutHC && cachedHCSize === size && cachedHCValueCheck === uiState.valueCheck) return;
+            if (
+                cachedHCGamut === uiState.showGamutHC &&
+                cachedHCSize === size &&
+                cachedHCValueCheck === uiState.valueCheck &&
+                cachedHCHueGamutMap === appState.huePreservingGamut
+            ) return;
             cachedHCGamut = uiState.showGamutHC;
             cachedHCSize = size;
             cachedHCValueCheck = uiState.valueCheck;
+            cachedHCHueGamutMap = appState.huePreservingGamut;
 
             const hcCanvas = document.getElementById('bg-hc');
             hcCanvas.width = size;
@@ -1589,13 +1672,20 @@
                     let c = (r / half) * MAX_C;
                     let cosH = r > 0 ? dx / r : 1;
                     let sinH = r > 0 ? dy / r : 0;
-                    let lin = oklab_to_linear_srgb(0.5, c * cosH, c * sinH);
-
-                    let inGamut = !uiState.showGamutHC || (
-                        lin.r >= -eps && lin.r <= 1 + eps &&
-                        lin.g >= -eps && lin.g <= 1 + eps &&
-                        lin.b >= -eps && lin.b <= 1 + eps
+                    let rawLin = oklab_to_linear_srgb(0.5, c * cosH, c * sinH);
+                    let withinSrgb = (
+                        rawLin.r >= -eps && rawLin.r <= 1 + eps &&
+                        rawLin.g >= -eps && rawLin.g <= 1 + eps &&
+                        rawLin.b >= -eps && rawLin.b <= 1 + eps
                     );
+
+                    let inGamut = !uiState.showGamutHC || withinSrgb;
+                    let lin = rawLin;
+                    if (appState.huePreservingGamut && !withinSrgb) {
+                        let aDeg = Math.atan2(dy, dx) * 180 / Math.PI;
+                        if (aDeg < 0) aDeg += 360;
+                        lin = gamut_map_oklch_to_linear_srgb(0.5, c, aDeg);
+                    }
 
                     let dispLin = uiState.valueCheck ? oklab_to_linear_srgb(0.5, 0, 0) : lin;
                     let sr = Math.max(0, Math.min(1, linear_srgb_to_srgb(Math.max(0, Math.min(1, dispLin.r))))) * 255;
@@ -1623,15 +1713,23 @@
         let cachedLCGamut = null;
         let cachedLCSize = null;
         let cachedLCValueCheck = null;
+        let cachedLCHueGamutMap = null;
         function renderLCBackground() {
             // LC Background - Lightness changes vertically, hue syncs with middle stop.
             // When Gamut preview is enabled, areas outside the sRGB gamut at the middle stop's hue are overlaid with black at 50% opacity.
             const size = uiState.expandedEditor === 'LC' ? 540 : 300;
-            if (cachedMidHue === state.mid.h && cachedLCGamut === uiState.showGamutLC && cachedLCSize === size && cachedLCValueCheck === uiState.valueCheck) return;
+            if (
+                cachedMidHue === state.mid.h &&
+                cachedLCGamut === uiState.showGamutLC &&
+                cachedLCSize === size &&
+                cachedLCValueCheck === uiState.valueCheck &&
+                cachedLCHueGamutMap === appState.huePreservingGamut
+            ) return;
             cachedMidHue = state.mid.h;
             cachedLCGamut = uiState.showGamutLC;
             cachedLCSize = size;
             cachedLCValueCheck = uiState.valueCheck;
+            cachedLCHueGamutMap = appState.huePreservingGamut;
 
             const lcCanvas = document.getElementById('bg-lc');
             lcCanvas.width = size;
@@ -1646,15 +1744,43 @@
 
             for (let y = 0; y < size; y++) {
                 let l = 1 - (y / size);
+                let rowMaxC = MAX_C;
+                if (appState.huePreservingGamut) {
+                    if (l <= 0 || l >= 1) {
+                        rowMaxC = 0;
+                    } else {
+                        let lo = 0;
+                        let hi = MAX_C;
+                        for (let i = 0; i < 20; i++) {
+                            const mid = 0.5 * (lo + hi);
+                            const test = oklab_to_linear_srgb(l, mid * cosH, mid * sinH);
+                            if (
+                                test.r >= 0 && test.r <= 1 &&
+                                test.g >= 0 && test.g <= 1 &&
+                                test.b >= 0 && test.b <= 1
+                            ) {
+                                lo = mid;
+                            } else {
+                                hi = mid;
+                            }
+                        }
+                        rowMaxC = lo;
+                    }
+                }
+
                 for (let x = 0; x < size; x++) {
                     let c = (x / size) * MAX_C;
-                    let lin = oklab_to_linear_srgb(l, c * cosH, c * sinH);
-
-                    let inGamut = !uiState.showGamutLC || (
-                        lin.r >= -eps && lin.r <= 1 + eps &&
-                        lin.g >= -eps && lin.g <= 1 + eps &&
-                        lin.b >= -eps && lin.b <= 1 + eps
+                    let rawLin = oklab_to_linear_srgb(l, c * cosH, c * sinH);
+                    let withinSrgb = (
+                        rawLin.r >= -eps && rawLin.r <= 1 + eps &&
+                        rawLin.g >= -eps && rawLin.g <= 1 + eps &&
+                        rawLin.b >= -eps && rawLin.b <= 1 + eps
                     );
+
+                    let inGamut = !uiState.showGamutLC || withinSrgb;
+                    let lin = appState.huePreservingGamut
+                        ? oklab_to_linear_srgb(l, Math.min(c, rowMaxC) * cosH, Math.min(c, rowMaxC) * sinH)
+                        : rawLin;
 
                     let dispLin = uiState.valueCheck ? oklab_to_linear_srgb(l, 0, 0) : lin;
                     let sr = Math.max(0, Math.min(1, linear_srgb_to_srgb(Math.max(0, Math.min(1, dispLin.r))))) * 255;
