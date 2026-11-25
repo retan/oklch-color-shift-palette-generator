@@ -199,6 +199,67 @@
         </div>
     </div>
 
+    <!-- CSS Custom Properties Export Dialog -->
+    <div id="css-export-modal" role="dialog" aria-modal="true" aria-labelledby="css-export-modal-title" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-lg p-5 space-y-4">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <h3 id="css-export-modal-title" class="text-base font-bold text-slate-100">Export CSS Custom Properties</h3>
+                    <p class="text-xs text-slate-400 mt-1">Copy or download all palettes as CSS variables in <code class="text-slate-300">oklch()</code> or <code class="text-slate-300">hex</code> format.</p>
+                </div>
+                <button type="button" id="css-export-close-x" aria-label="Close dialog" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="space-y-1.5">
+                    <label class="block text-xs font-semibold text-slate-300">Color Format</label>
+                    <div class="grid grid-cols-3 gap-1 p-1 bg-slate-950 border border-slate-700 rounded-lg">
+                        <button type="button" data-css-format="oklch" class="css-format-option py-1.5 px-2 rounded-md text-xs font-semibold transition-colors">oklch()</button>
+                        <button type="button" data-css-format="hex" class="css-format-option py-1.5 px-2 rounded-md text-xs font-semibold transition-colors">hex</button>
+                        <button type="button" data-css-format="both" class="css-format-option py-1.5 px-2 rounded-md text-xs font-semibold transition-colors">Both</button>
+                    </div>
+                </div>
+                <div class="space-y-1.5">
+                    <label for="css-var-prefix-input" class="block text-xs font-semibold text-slate-300">Variable Prefix</label>
+                    <div class="flex items-center bg-slate-950 border border-slate-700 rounded-lg px-2.5 focus-within:border-blue-500">
+                        <span class="text-xs font-mono text-slate-500 select-none">--</span>
+                        <input type="text" id="css-var-prefix-input" value="palette" placeholder="palette" autocomplete="off" spellcheck="false" class="w-full py-1.5 px-1 bg-transparent text-xs font-mono text-slate-100 placeholder-slate-500 focus:outline-none">
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-1.5">
+                <div class="flex items-center justify-between">
+                    <label for="css-export-preview" class="block text-xs font-semibold text-slate-300">Generated CSS Preview</label>
+                    <span id="css-export-count" class="text-[11px] font-mono text-slate-400"></span>
+                </div>
+                <textarea id="css-export-preview" readonly rows="10" spellcheck="false" class="w-full p-3 bg-slate-950 border border-slate-700 rounded-xl font-mono text-xs leading-relaxed text-slate-200 focus:outline-none focus:border-blue-500 resize-y"></textarea>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-end gap-2 pt-1">
+                <button type="button" id="css-export-cancel-btn" class="px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold border border-slate-700 transition-colors">
+                    Close
+                </button>
+                <button type="button" id="css-export-copy-btn" class="px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 hover:text-white text-xs font-semibold border border-slate-600 transition-colors inline-flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                    </svg>
+                    <span id="css-export-copy-label">Copy CSS</span>
+                </button>
+                <button type="button" id="css-export-download-btn" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold border border-blue-500 transition-colors inline-flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                    </svg>
+                    <span>Download .css</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Top Area: Controls and Editors -->
     <div class="flex flex-col sm:flex-1 sm:min-h-0 sm:flex-row sm:overflow-hidden">
 
@@ -415,6 +476,12 @@
                 </svg>
                 <span>Export Infinite Painter (.clrs)</span>
             </button>
+            <button id="export-css-btn" class="py-2 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold tracking-wider rounded-lg border border-slate-700 transition-colors flex items-center justify-center gap-2 shadow-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
+                </svg>
+                <span>Export CSS</span>
+            </button>
             <button id="export-json-btn" class="py-2 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold tracking-wider rounded-lg border border-slate-700 transition-colors flex items-center justify-center gap-2 shadow-sm">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
@@ -552,11 +619,12 @@
         let pendingSnapshot = null;
         let toastTimer = null;
 
-        function showToast(message) {
+        function showToast(message, variant = 'error') {
             const el = document.getElementById('status-toast');
             if (!el) return;
             el.textContent = message;
-            el.classList.remove('hidden');
+            el.classList.remove('hidden', 'border-red-500/60', 'border-emerald-500/60');
+            el.classList.add(variant === 'success' ? 'border-emerald-500/60' : 'border-red-500/60');
             if (toastTimer) clearTimeout(toastTimer);
             toastTimer = setTimeout(() => {
                 el.classList.add('hidden');
@@ -1161,6 +1229,34 @@
                 if (e.target === resetConfirmModal) closeResetDialog();
             });
 
+            // CSS Variables Export button & dialog
+            document.getElementById('export-css-btn').addEventListener('click', () => openCssExportDialog());
+            document.getElementById('css-export-close-x').addEventListener('click', closeCssExportDialog);
+            document.getElementById('css-export-cancel-btn').addEventListener('click', closeCssExportDialog);
+            document.getElementById('css-export-copy-btn').addEventListener('click', copyCssExportToClipboard);
+            document.getElementById('css-export-download-btn').addEventListener('click', downloadCssExportFile);
+
+            const cssExportModal = document.getElementById('css-export-modal');
+            cssExportModal.addEventListener('click', (e) => {
+                if (e.target === cssExportModal) closeCssExportDialog();
+            });
+
+            document.querySelectorAll('.css-format-option').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    cssExportFormat = btn.dataset.cssFormat || 'oklch';
+                    refreshCssExportPreview();
+                });
+            });
+
+            const cssPrefixInput = document.getElementById('css-var-prefix-input');
+            cssPrefixInput.addEventListener('input', refreshCssExportPreview);
+            cssPrefixInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    closeCssExportDialog();
+                }
+            });
+
             document.getElementById('export-json-btn').addEventListener('click', exportConfigurationJson);
 
             const importJsonBtn = document.getElementById('import-json-btn');
@@ -1178,6 +1274,11 @@
             document.getElementById('undo-btn').addEventListener('click', performUndo);
             document.getElementById('redo-btn').addEventListener('click', performRedo);
             window.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && !cssExportModal.classList.contains('hidden')) {
+                    e.preventDefault();
+                    closeCssExportDialog();
+                    return;
+                }
                 if (e.key === 'Escape' && !resetConfirmModal.classList.contains('hidden')) {
                     e.preventDefault();
                     closeResetDialog();
@@ -1286,7 +1387,7 @@
             });
         }
 
-        // Multi-palette row selection, addition, reordering, and deletion
+        // Multi-palette row selection, addition, deletion, and drag reordering
         function selectPaletteRow(rowIndex) {
             if (rowIndex < 0 || rowIndex >= appState.palettes.length) return;
             if (appState.activeIndex === rowIndex) return;
@@ -1318,7 +1419,7 @@
             updateAll();
         }
 
-        function clearRowDragVisuals() {
+        function clearRowDragClasses() {
             const listContainer = document.getElementById('palettes-list');
             if (!listContainer) return;
             listContainer.querySelectorAll('[data-palette-row]').forEach(el => {
@@ -1326,80 +1427,77 @@
             });
         }
 
+        function startRowDrag(fromIndex, clientY) {
+            if (appState.palettes.length <= 1) return;
+            rowDragging = true;
+            rowDragFromIndex = fromIndex;
+            rowDropInsertSlot = fromIndex;
+            const listContainer = document.getElementById('palettes-list');
+            const rows = listContainer ? listContainer.querySelectorAll('[data-palette-row]') : [];
+            if (rows[fromIndex]) {
+                rows[fromIndex].classList.add('palette-row-dragging');
+            }
+            updateRowDropIndicator(clientY);
+        }
+
         function updateRowDropIndicator(clientY) {
+            if (!rowDragging) return;
             const listContainer = document.getElementById('palettes-list');
             if (!listContainer) return;
 
-            // Auto-scroll the palette list container when dragging near its top or bottom edges
-            const listRect = listContainer.getBoundingClientRect();
-            const edgeThreshold = 32;
-            if (clientY < listRect.top + edgeThreshold) {
+            // Auto-scroll container when dragging near top or bottom edges
+            const rect = listContainer.getBoundingClientRect();
+            const edgeThreshold = 28;
+            if (clientY < rect.top + edgeThreshold) {
                 listContainer.scrollTop -= 8;
-            } else if (clientY > listRect.bottom - edgeThreshold) {
+            } else if (clientY > rect.bottom - edgeThreshold) {
                 listContainer.scrollTop += 8;
             }
 
-            const rowEls = Array.from(listContainer.querySelectorAll('[data-palette-row]'));
-            if (rowEls.length === 0) return;
+            const rows = Array.from(listContainer.querySelectorAll('[data-palette-row]'));
+            rows.forEach(el => el.classList.remove('palette-drop-above', 'palette-drop-below'));
 
-            let insertSlot = rowEls.length;
-            for (let i = 0; i < rowEls.length; i++) {
-                const rect = rowEls[i].getBoundingClientRect();
-                const midY = rect.top + rect.height / 2;
+            let insertSlot = rows.length;
+            for (let i = 0; i < rows.length; i++) {
+                const r = rows[i].getBoundingClientRect();
+                const midY = r.top + r.height / 2;
                 if (clientY < midY) {
                     insertSlot = i;
                     break;
                 }
             }
-
             rowDropInsertSlot = insertSlot;
 
-            rowEls.forEach((el, idx) => {
-                el.classList.toggle('palette-row-dragging', idx === rowDragFromIndex);
-                el.classList.remove('palette-drop-above', 'palette-drop-below');
-            });
-
             if (insertSlot !== rowDragFromIndex && insertSlot !== rowDragFromIndex + 1) {
-                if (insertSlot < rowDragFromIndex && rowEls[insertSlot]) {
-                    rowEls[insertSlot].classList.add('palette-drop-above');
-                } else if (insertSlot > rowDragFromIndex + 1 && rowEls[insertSlot - 1]) {
-                    rowEls[insertSlot - 1].classList.add('palette-drop-below');
+                if (insertSlot < rows.length) {
+                    rows[insertSlot].classList.add('palette-drop-above');
+                } else if (rows.length > 0) {
+                    rows[rows.length - 1].classList.add('palette-drop-below');
                 }
             }
         }
 
-        function startRowDrag(rowIndex, clientY) {
-            if (appState.palettes.length <= 1) return;
-            rowDragging = true;
-            rowDragFromIndex = rowIndex;
-            rowDropInsertSlot = rowIndex;
-            beginPendingUndo();
-            updateRowDropIndicator(clientY);
-        }
-
         function finishRowDrag() {
             if (!rowDragging) return;
-            const fromIndex = rowDragFromIndex;
+            const fromIdx = rowDragFromIndex;
             const insertSlot = rowDropInsertSlot;
-
             rowDragging = false;
             rowDragFromIndex = -1;
             rowDropInsertSlot = -1;
-            clearRowDragVisuals();
+            clearRowDragClasses();
 
-            const toIndex = insertSlot > fromIndex ? insertSlot - 1 : insertSlot;
-            if (fromIndex >= 0 && toIndex >= 0 && toIndex < appState.palettes.length && toIndex !== fromIndex) {
-                const activeCfg = appState.palettes[appState.activeIndex];
-                const [moved] = appState.palettes.splice(fromIndex, 1);
-                appState.palettes.splice(toIndex, 0, moved);
-                appState.activeIndex = appState.palettes.indexOf(activeCfg);
-                state = appState.palettes[appState.activeIndex];
-                commitPendingUndo();
-                lastRenderedPaletteCount = -1;
-                updateAll();
-            } else {
-                pendingSnapshot = null;
-            }
+            if (fromIdx < 0 || insertSlot < 0) return;
+            const toIdx = insertSlot > fromIdx ? insertSlot - 1 : insertSlot;
+            if (toIdx === fromIdx || toIdx < 0 || toIdx >= appState.palettes.length) return;
+
+            recordImmediateUndo();
+            const activeCfg = appState.palettes[appState.activeIndex];
+            const [moved] = appState.palettes.splice(fromIdx, 1);
+            appState.palettes.splice(toIdx, 0, moved);
+            appState.activeIndex = appState.palettes.indexOf(activeCfg);
+            state = appState.palettes[appState.activeIndex];
+            lastRenderedPaletteCount = -1;
+            updateAll();
         }
 
         // Open, cancel, and confirm handlers for the Infinite Painter .clrs export dialog
@@ -1459,6 +1557,192 @@
             const a = document.createElement('a');
             a.href = url;
             a.download = `${safeFileBase}.clrs`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+
+        // CSS Custom Properties (oklch() and hex) Export Helpers & Dialog
+        let cssExportFormat = 'oklch'; // 'oklch' | 'hex' | 'both'
+
+        function getGamutMappedOklch(l, c, h) {
+            if (!appState.huePreservingGamut) {
+                return { l, c, h };
+            }
+            if (l <= 0) return { l: 0, c: 0, h };
+            if (l >= 1) return { l: 1, c: 0, h };
+
+            const hRad = h * Math.PI / 180;
+            const cosH = Math.cos(hRad);
+            const sinH = Math.sin(hRad);
+            const eps = 1e-6;
+            const lin = oklab_to_linear_srgb(l, c * cosH, c * sinH);
+            if (
+                lin.r >= -eps && lin.r <= 1 + eps &&
+                lin.g >= -eps && lin.g <= 1 + eps &&
+                lin.b >= -eps && lin.b <= 1 + eps
+            ) {
+                return { l, c, h };
+            }
+
+            let lo = 0;
+            let hi = Math.max(0, c);
+            for (let i = 0; i < 24; i++) {
+                const mid = 0.5 * (lo + hi);
+                const test = oklab_to_linear_srgb(l, mid * cosH, mid * sinH);
+                if (
+                    test.r >= 0 && test.r <= 1 &&
+                    test.g >= 0 && test.g <= 1 &&
+                    test.b >= 0 && test.b <= 1
+                ) {
+                    lo = mid;
+                } else {
+                    hi = mid;
+                }
+            }
+            return { l, c: lo, h };
+        }
+
+        function formatCssOklch(p) {
+            const resolved = getGamutMappedOklch(p.l, p.c, p.h);
+            const lStr = Number(Math.max(0, Math.min(1, resolved.l)).toFixed(4));
+            const cStr = Number(Math.max(0, resolved.c).toFixed(4));
+            const normH = ((resolved.h % 360) + 360) % 360;
+            const hStr = Number((normH >= 359.995 ? 0 : normH).toFixed(2));
+            return `oklch(${lStr} ${cStr} ${hStr})`;
+        }
+
+        function sanitizeCssVarPrefix(raw) {
+            const cleaned = (raw || '')
+                .trim()
+                .replace(/^--+/, '')
+                .toLowerCase()
+                .replace(/[^a-z0-9_-]+/g, '-')
+                .replace(/^-+|-+$/g, '');
+            return cleaned || 'palette';
+        }
+
+        function buildCssVariablesOutput(format = cssExportFormat, rawPrefix = 'palette') {
+            const prefix = sanitizeCssVarPrefix(rawPrefix);
+            const multiPalette = appState.palettes.length > 1;
+            const lines = [':root {'];
+            let totalVars = 0;
+
+            appState.palettes.forEach((cfg, rowIndex) => {
+                const palette = generatePalette(cfg);
+                if (rowIndex > 0) lines.push('');
+                lines.push(`  /* Palette #${rowIndex + 1} (${palette.length} stops) */`);
+
+                palette.forEach((p, i) => {
+                    const baseName = multiPalette
+                        ? `--${prefix}-${rowIndex + 1}-${i + 1}`
+                        : `--${prefix}-${i + 1}`;
+
+                    let roleComment = '';
+                    if (i === 0) roleComment = ' /* Start */';
+                    else if (i === palette.length - 1) roleComment = ' /* End */';
+                    else if (p === cfg.mid) roleComment = ' /* Middle */';
+
+                    if (format === 'oklch') {
+                        lines.push(`  ${baseName}: ${formatCssOklch(p)};${roleComment}`);
+                        totalVars += 1;
+                    } else if (format === 'hex') {
+                        lines.push(`  ${baseName}: ${oklch_to_hex(p.l, p.c, p.h)};${roleComment}`);
+                        totalVars += 1;
+                    } else {
+                        lines.push(`  ${baseName}: ${formatCssOklch(p)};${roleComment}`);
+                        lines.push(`  ${baseName}-hex: ${oklch_to_hex(p.l, p.c, p.h)};`);
+                        totalVars += 2;
+                    }
+                });
+            });
+
+            lines.push('}');
+            return { cssText: lines.join('\n'), totalVars, prefix };
+        }
+
+        function refreshCssExportPreview() {
+            const prefixInput = document.getElementById('css-var-prefix-input');
+            const previewEl = document.getElementById('css-export-preview');
+            const countEl = document.getElementById('css-export-count');
+            if (!prefixInput || !previewEl) return;
+
+            document.querySelectorAll('.css-format-option').forEach(btn => {
+                const isActive = btn.dataset.cssFormat === cssExportFormat;
+                btn.className = isActive
+                    ? 'css-format-option py-1.5 px-2 rounded-md text-xs font-semibold transition-colors bg-blue-600 text-white'
+                    : 'css-format-option py-1.5 px-2 rounded-md text-xs font-semibold transition-colors text-slate-400 hover:text-white';
+            });
+
+            const { cssText, totalVars } = buildCssVariablesOutput(cssExportFormat, prefixInput.value);
+            previewEl.value = cssText;
+            if (countEl) {
+                countEl.textContent = `${totalVars} variable${totalVars === 1 ? '' : 's'}`;
+            }
+        }
+
+        function openCssExportDialog(defaultFormat = null) {
+            const modal = document.getElementById('css-export-modal');
+            const copyLabel = document.getElementById('css-export-copy-label');
+            if (!modal) return;
+            if (defaultFormat) cssExportFormat = defaultFormat;
+            if (copyLabel) copyLabel.textContent = 'Copy CSS';
+            refreshCssExportPreview();
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            const previewEl = document.getElementById('css-export-preview');
+            if (previewEl) {
+                requestAnimationFrame(() => previewEl.focus());
+            }
+        }
+
+        function closeCssExportDialog() {
+            const modal = document.getElementById('css-export-modal');
+            if (!modal) return;
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function copyCssExportToClipboard() {
+            const previewEl = document.getElementById('css-export-preview');
+            const copyLabel = document.getElementById('css-export-copy-label');
+            if (!previewEl) return;
+
+            previewEl.focus();
+            previewEl.select();
+            previewEl.setSelectionRange(0, previewEl.value.length);
+            let copied = false;
+            try {
+                copied = document.execCommand('copy');
+            } catch (_) {
+                copied = false;
+            }
+            if (!copied) {
+                fallbackCopyText(previewEl.value);
+            }
+
+            if (copyLabel) {
+                copyLabel.textContent = 'Copied!';
+                setTimeout(() => {
+                    copyLabel.textContent = 'Copy CSS';
+                }, 1500);
+            }
+            showToast('CSS custom properties copied to clipboard.', 'success');
+        }
+
+        function downloadCssExportFile() {
+            const prefixInput = document.getElementById('css-var-prefix-input');
+            const { cssText, prefix } = buildCssVariablesOutput(
+                cssExportFormat,
+                prefixInput ? prefixInput.value : 'palette'
+            );
+            const suffix = cssExportFormat === 'both' ? 'variables' : cssExportFormat;
+            const blob = new Blob([cssText], { type: 'text/css;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${prefix}-${suffix}.css`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
