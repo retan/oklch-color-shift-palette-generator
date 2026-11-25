@@ -147,7 +147,10 @@
         }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-200 min-h-dvh w-full overflow-x-hidden overflow-y-auto sm:h-dvh sm:w-screen sm:overflow-hidden flex flex-col font-sans">
+<body class="bg-slate-950 text-slate-200 min-h-dvh w-full overflow-x-hidden overflow-y-auto lg:h-dvh lg:w-screen lg:overflow-hidden flex flex-col font-sans">
+
+    <!-- Backdrop for Expanded Bottom Palette Drawer -->
+    <div id="palette-drawer-backdrop" class="fixed inset-0 z-20 hidden bg-slate-950/60 backdrop-blur-[1px]"></div>
 
     <!-- Status Toast Banner (replaces blocking alerts) -->
     <div id="status-toast" class="fixed top-4 right-4 z-50 hidden max-w-sm px-4 py-3 rounded-xl bg-slate-900 border border-red-500/60 text-slate-100 text-xs shadow-xl"></div>
@@ -261,11 +264,11 @@
     </div>
 
     <!-- Top Area: Controls and Editors -->
-    <div class="flex flex-col sm:flex-1 sm:min-h-0 sm:flex-row sm:overflow-hidden">
+    <div class="flex flex-col flex-1 min-h-0 lg:flex-row lg:overflow-hidden">
 
         <!-- Sidebar Controls -->
-        <aside class="w-full sm:w-80 bg-slate-900 border-b sm:border-b-0 sm:border-r border-slate-800 flex flex-col sm:overflow-y-auto z-10 shrink-0">
-            <div class="p-4 sm:p-5 border-b border-slate-800">
+        <aside class="w-full lg:w-80 bg-slate-900 border-b lg:border-b-0 lg:border-r border-slate-800 flex flex-col lg:overflow-y-auto z-10 shrink-0">
+            <div class="p-4 border-b border-slate-800">
                 <div class="flex items-start justify-between gap-2">
                     <div>
                         <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">OKlch Color Shift Palette Generator</h1>
@@ -294,25 +297,25 @@
                 </div>
             </div>
 
-            <div class="p-4 sm:p-5 space-y-6 flex-1 flex flex-col justify-between">
+            <div class="p-4 space-y-4 flex-1 flex flex-col justify-between">
                 <!-- Colors Loop rendered via JS logic below -->
-                <div id="color-inputs-container" class="space-y-6">
+                <div id="color-inputs-container" class="space-y-3.5">
                     <!-- Dynamic content injected here to keep HTML DRY -->
                 </div>
 
                 <!-- Tonal Color Scale, Gamut Mapping & Value Check Switches -->
-                <div class="pt-4 border-t border-slate-800 space-y-2.5">
-                    <label class="flex items-center justify-between gap-3 bg-slate-950 px-3.5 py-2.5 rounded-lg border border-slate-800 hover:border-slate-700 cursor-pointer select-none transition-colors" title="Weight end intervals to half the spacing of interior intervals">
+                <div class="pt-3 border-t border-slate-800 space-y-2">
+                    <label class="flex items-center justify-between gap-3 bg-slate-950 px-3.5 py-2 rounded-lg border border-slate-800 hover:border-slate-700 cursor-pointer select-none transition-colors" title="Weight end intervals to half the spacing of interior intervals">
                         <span class="text-sm font-semibold text-slate-300">Tonal Color Scale</span>
                         <input type="checkbox" id="tonal-scale-toggle" class="sr-only peer">
                         <span class="relative w-9 h-5 shrink-0 bg-slate-700 rounded-full transition-colors peer-checked:bg-blue-500 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-transform peer-checked:after:translate-x-4"></span>
                     </label>
-                    <label class="flex items-center justify-between gap-3 bg-slate-950 px-3.5 py-2.5 rounded-lg border border-slate-800 hover:border-slate-700 cursor-pointer select-none transition-colors" title="Map out-of-gamut colors into sRGB by reducing chroma while preserving OKlch Hue and Lightness, and shade out-of-gamut regions in 2D editors">
+                    <label class="flex items-center justify-between gap-3 bg-slate-950 px-3.5 py-2 rounded-lg border border-slate-800 hover:border-slate-700 cursor-pointer select-none transition-colors" title="Map out-of-gamut colors into sRGB by reducing chroma while preserving OKlch Hue and Lightness, and shade out-of-gamut regions in 2D editors">
                         <span class="text-sm font-semibold text-slate-300">Gamut Mapping</span>
                         <input type="checkbox" id="hue-gamut-toggle" class="sr-only peer">
                         <span class="relative w-9 h-5 shrink-0 bg-slate-700 rounded-full transition-colors peer-checked:bg-blue-500 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-transform peer-checked:after:translate-x-4"></span>
                     </label>
-                    <label class="flex items-center justify-between gap-3 bg-slate-950 px-3.5 py-2.5 rounded-lg border border-slate-800 hover:border-slate-700 cursor-pointer select-none transition-colors" title="Preview colors as grayscale values determined by OKlch Lightness">
+                    <label class="flex items-center justify-between gap-3 bg-slate-950 px-3.5 py-2 rounded-lg border border-slate-800 hover:border-slate-700 cursor-pointer select-none transition-colors" title="Preview colors as grayscale values determined by OKlch Lightness">
                         <span class="text-sm font-semibold text-slate-300">Value (Grayscale) Preview</span>
                         <input type="checkbox" id="value-check-toggle" class="sr-only peer">
                         <span class="relative w-9 h-5 shrink-0 bg-slate-700 rounded-full transition-colors peer-checked:bg-blue-500 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-transform peer-checked:after:translate-x-4"></span>
@@ -322,9 +325,9 @@
         </aside>
 
         <!-- Main Visualization Area -->
-        <main class="flex flex-col sm:flex-1 bg-slate-950 relative sm:overflow-hidden">
+        <main class="flex flex-col flex-1 min-h-0 bg-slate-950 relative lg:overflow-hidden">
 
-            <div class="grid grid-cols-1 sm:flex-1 xl:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6 sm:overflow-y-auto">
+            <div class="grid grid-cols-1 lg:flex-1 xl:grid-cols-3 gap-4 xl:gap-5 p-4 xl:p-5 lg:overflow-y-auto">
 
                 <!-- L vs C Editor -->
                 <div id="card-lc" class="editor-card flex flex-col items-center bg-slate-900/50 p-4 rounded-xl border border-slate-800">
@@ -463,38 +466,60 @@
         </main>
     </div>
 
-    <!-- Bottom Area: Palette Output -->
-    <footer class="bg-slate-900 border-t border-slate-800 px-4 py-4 sm:px-5 sm:py-3 sm:max-h-[50dvh] shrink-0 z-20 flex flex-col gap-2">
-        <div id="palettes-list" class="space-y-2 sm:min-h-[5.5rem] sm:flex-1 sm:overflow-y-auto sm:pr-1">
-            <!-- Palette rows and new-row placeholder will be generated here -->
+    <!-- Bottom Area: Minimized Active Swatch Strip by Default, Expandable Drawer -->
+    <footer id="palette-footer" class="sticky bottom-0 lg:relative shrink-0 z-30 bg-slate-900 border-t border-slate-700/90 px-3 py-2 sm:px-5 flex flex-col">
+        <!-- Expand / Collapse Chevron Tab Above Top-Right Edge -->
+        <button
+            id="toggle-palette-drawer-btn"
+            type="button"
+            aria-expanded="false"
+            aria-controls="expanded-palette-content"
+            title="Expand palettes panel"
+            class="absolute bottom-full right-4 sm:right-5 inline-flex items-center justify-center px-3 py-1 rounded-t-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-b-0 border-slate-700 shadow-md transition-colors cursor-pointer"
+        >
+            <svg id="toggle-palette-drawer-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="M5 15l7-7 7 7"></path>
+            </svg>
+        </button>
+
+        <!-- Minimized View: Low strip of active palette color swatches only -->
+        <div id="minimized-palette-strip" class="flex items-center gap-1.5 overflow-x-auto py-0.5">
+            <!-- Active palette swatches injected here when minimized -->
         </div>
-        <!-- Export / Import Buttons -->
-        <div class="flex flex-wrap items-stretch sm:items-center justify-center gap-2.5 pt-1 shrink-0">
-            <button id="export-clrs-btn" class="py-2 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold tracking-wider rounded-lg border border-slate-700 transition-colors flex items-center justify-center gap-2 shadow-sm">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                </svg>
-                <span>Export Infinite Painter (.clrs)</span>
-            </button>
-            <button id="export-css-btn" class="py-2 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold tracking-wider rounded-lg border border-slate-700 transition-colors flex items-center justify-center gap-2 shadow-sm">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
-                </svg>
-                <span>Export CSS</span>
-            </button>
-            <button id="export-json-btn" class="py-2 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold tracking-wider rounded-lg border border-slate-700 transition-colors flex items-center justify-center gap-2 shadow-sm">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                </svg>
-                <span>Export Config JSON</span>
-            </button>
-            <button id="import-json-btn" class="py-2 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold tracking-wider rounded-lg border border-slate-700 transition-colors flex items-center justify-center gap-2 shadow-sm">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
-                </svg>
-                <span>Import Config JSON</span>
-            </button>
-            <input type="file" id="import-json-input" accept=".json,application/json" class="hidden">
+
+        <!-- Expanded View: Full palette rows, placeholder row, and export/import actions -->
+        <div id="expanded-palette-content" class="hidden flex-col gap-2.5 min-h-0 flex-1">
+            <div id="palettes-list" class="space-y-2 min-h-0 overflow-y-auto pr-1">
+                <!-- Palette rows and new-row placeholder will be generated here -->
+            </div>
+            <!-- Export / Import Buttons -->
+            <div class="flex flex-wrap items-stretch sm:items-center justify-center gap-2.5 pt-1 shrink-0">
+                <button id="export-clrs-btn" class="py-2 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold tracking-wider rounded-lg border border-slate-700 transition-colors flex items-center justify-center gap-2 shadow-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                    </svg>
+                    <span>Export Infinite Painter (.clrs)</span>
+                </button>
+                <button id="export-css-btn" class="py-2 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold tracking-wider rounded-lg border border-slate-700 transition-colors flex items-center justify-center gap-2 shadow-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
+                    </svg>
+                    <span>Export CSS</span>
+                </button>
+                <button id="export-json-btn" class="py-2 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold tracking-wider rounded-lg border border-slate-700 transition-colors flex items-center justify-center gap-2 shadow-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                    </svg>
+                    <span>Export Config JSON</span>
+                </button>
+                <button id="import-json-btn" class="py-2 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold tracking-wider rounded-lg border border-slate-700 transition-colors flex items-center justify-center gap-2 shadow-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                    </svg>
+                    <span>Import Config JSON</span>
+                </button>
+                <input type="file" id="import-json-input" accept=".json,application/json" class="hidden">
+            </div>
         </div>
     </footer>
 
@@ -579,11 +604,11 @@
                 // Ignore corrupted session storage data
             }
         }
-
-        // Visual Editor UI state (Value Check turned off by default)
+        // Visual Editor UI state (Value Check turned off by default, bottom palette drawer minimized by default)
         const uiState = {
             valueCheck: false,
-            expandedEditor: null // 'LC' | 'HC' | null
+            expandedEditor: null, // 'LC' | 'HC' | null
+            paletteDrawerExpanded: false
         };
 
         const keys = ['dark', 'mid', 'light'];
@@ -1074,11 +1099,11 @@
 
             sections.forEach(sec => {
                 const el = document.createElement('div');
-                el.className = 'bg-slate-950 p-4 rounded-lg border border-slate-800 shadow-sm transition-opacity duration-200';
+                el.className = 'bg-slate-950 p-3.5 rounded-lg border border-slate-800 shadow-sm transition-opacity duration-200';
                 el.id = `section-${sec.id}`;
 
                 el.innerHTML = `
-                    <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center justify-between mb-2.5">
                         <div class="flex items-center gap-2">
                             <span class="text-sm font-semibold text-slate-300">${sec.label}</span>
                         </div>
@@ -1293,6 +1318,11 @@
                     setExpandedEditor(null);
                     return;
                 }
+                if (e.key === 'Escape' && uiState.paletteDrawerExpanded) {
+                    e.preventDefault();
+                    setPaletteDrawerExpanded(false);
+                    return;
+                }
                 if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
                     e.preventDefault();
                     if (e.shiftKey) performRedo();
@@ -1301,6 +1331,14 @@
                     e.preventDefault();
                     performRedo();
                 }
+            });
+
+            // Bottom palette drawer expand / collapse toggle & backdrop
+            document.getElementById('toggle-palette-drawer-btn').addEventListener('click', () => {
+                setPaletteDrawerExpanded(!uiState.paletteDrawerExpanded);
+            });
+            document.getElementById('palette-drawer-backdrop').addEventListener('click', () => {
+                setPaletteDrawerExpanded(false);
             });
 
             // Expand / Collapse buttons for each visual editor
@@ -1384,6 +1422,77 @@
             document.getElementById('value-check-toggle').addEventListener('change', (e) => {
                 uiState.valueCheck = e.target.checked;
                 updateAll();
+            });
+        }
+
+        const CHEVRON_UP_PATH = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="M5 15l7-7 7 7"></path>`;
+        const CHEVRON_DOWN_PATH = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="M19 9l-7 7-7-7"></path>`;
+
+        function setPaletteDrawerExpanded(expanded) {
+            uiState.paletteDrawerExpanded = Boolean(expanded);
+
+            const footerEl = document.getElementById('palette-footer');
+            const minStripEl = document.getElementById('minimized-palette-strip');
+            const expContentEl = document.getElementById('expanded-palette-content');
+            const backdropEl = document.getElementById('palette-drawer-backdrop');
+            const toggleBtn = document.getElementById('toggle-palette-drawer-btn');
+            const toggleIcon = document.getElementById('toggle-palette-drawer-icon');
+
+            if (!footerEl || !minStripEl || !expContentEl || !toggleBtn || !toggleIcon) return;
+
+            if (uiState.paletteDrawerExpanded) {
+                footerEl.className = 'fixed inset-x-0 bottom-0 z-30 max-h-[calc(100dvh-2.5rem)] bg-slate-900 border-t border-slate-700 px-4 py-3.5 sm:px-5 sm:py-3.5 shadow-[0_-16px_48px_rgba(0,0,0,0.75)] flex flex-col';
+                minStripEl.classList.add('hidden');
+                expContentEl.classList.remove('hidden');
+                expContentEl.classList.add('flex');
+                if (backdropEl) backdropEl.classList.remove('hidden');
+                toggleBtn.setAttribute('aria-expanded', 'true');
+                toggleBtn.title = 'Minimize palettes panel';
+                toggleIcon.innerHTML = CHEVRON_DOWN_PATH;
+                renderAllPaletteRows(generatePalette(state));
+            } else {
+                footerEl.className = 'sticky bottom-0 lg:relative shrink-0 z-30 bg-slate-900 border-t border-slate-700/90 px-3 py-2 sm:px-5 flex flex-col';
+                minStripEl.classList.remove('hidden');
+                expContentEl.classList.add('hidden');
+                expContentEl.classList.remove('flex');
+                if (backdropEl) backdropEl.classList.add('hidden');
+                toggleBtn.setAttribute('aria-expanded', 'false');
+                toggleBtn.title = 'Expand palettes panel';
+                toggleIcon.innerHTML = CHEVRON_UP_PATH;
+                buildMinimizedSwatchStrip(generatePalette(state), state);
+            }
+        }
+
+        function buildMinimizedSwatchStrip(activePalette, cfg) {
+            const minStripEl = document.getElementById('minimized-palette-strip');
+            if (!minStripEl) return;
+            minStripEl.innerHTML = '';
+
+            activePalette.forEach((p, i) => {
+                const hex = oklch_to_hex(p.l, p.c, p.h);
+                const previewHex = getPreviewHex(p.l, p.c, p.h);
+                const swatch = document.createElement('div');
+                swatch.className = 'relative h-6 flex-1 min-w-[14px] rounded-md border border-white/10 hover:ring-2 hover:ring-white/50 transition-shadow cursor-pointer overflow-hidden';
+                swatch.style.backgroundColor = previewHex;
+
+                let label = `Stop ${i + 1}`;
+                if (i === 0) label = 'Start';
+                else if (i === activePalette.length - 1) label = 'End';
+                else if (p === cfg.mid) label = 'Middle';
+                swatch.title = `${label}: ${hex.toUpperCase()} (Click to copy)`;
+
+                swatch.addEventListener('click', () => {
+                    copyHexToClipboard(hex);
+                    const existing = swatch.querySelector('.min-copied-dot');
+                    if (existing) existing.remove();
+                    const dot = document.createElement('span');
+                    dot.className = 'min-copied-dot absolute inset-0 flex items-center justify-center bg-slate-950/75 text-white text-[9px] font-bold pointer-events-none';
+                    dot.textContent = '✓';
+                    swatch.appendChild(dot);
+                    setTimeout(() => dot.remove(), 800);
+                });
+
+                minStripEl.appendChild(swatch);
             });
         }
 
@@ -2663,6 +2772,8 @@
 
         // Render all palette rows in the footer plus the inactive-row placeholder containing "Add palette"
         function renderAllPaletteRows(activePalette, skipStepsInput = false) {
+            buildMinimizedSwatchStrip(activePalette, state);
+
             const listContainer = document.getElementById('palettes-list');
             const existingRows = listContainer.querySelectorAll('[data-palette-row]');
             const structureChanged =
@@ -3078,6 +3189,7 @@
             initInteractions();
             init3D();
             updateUndoRedoButtons();
+            setPaletteDrawerExpanded(false);
             updateAll();
         };
 
