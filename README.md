@@ -1,6 +1,6 @@
 # OKlch Color Shift Palette Generator
 
-An interactive, browser-based color palette studio specifically designed to create complex palettes with expressive **hue and chroma shifts**. Built around the **OKlch** and **OKlab** perceptual color spaces, it lets you sculpt smooth, perceptually uniform color ramps using 2D cross-section Bezier editors, inspect sRGB gamut boundaries, view palettes in an interactive 3D cylindrical space, manage multiple palette rows side by side, and export directly to **Infinite Painter** (`.clrs`) or **JSON**.
+An interactive, browser-based color palette studio specifically designed to create complex palettes with expressive **hue and chroma shifts**. Built around the **OKlch** and **OKlab** perceptual color spaces, it lets you sculpt smooth, perceptually uniform color ramps using 2D cross-section Bezier editors, inspect sRGB gamut boundaries, view palettes in an interactive 3D cylindrical space, manage multiple palette rows side by side, and export directly to **Infinite Painter** (`.clrs`), **CSS Custom Properties** (`.css`), or **JSON**.
 
 > **Live Demo:** [Demo](https://retan.github.io/oklch-color-shift-palette-generator/)
 
@@ -24,19 +24,21 @@ An interactive, browser-based color palette studio specifically designed to crea
   - **Stop & Handle Locking:** Lock individual stops (Start, Middle, End) to freeze both the stop node and its attached Bezier control handles across dragging, background panning, and reflection actions.
 - **Interactive 3D OKlch Space:**
   - Real-time Three.js visualization of the transition curve and generated color stop spheres inside the OKlch cylinder with orbit, zoom, and pan controls.
-- **Multi-Palette Workflow, Ghost Overlays & One-Click Hex Copy:**
-  - Create multiple independent palette rows (**Add palette** clones the previous row as a starting point), click any row to select it for editing, customize per-palette stop counts on the active card, and delete extra rows.
-  - **Click-to-Copy Swatches:** Click any output color swatch to copy its uppercase hex code to the clipboard with an inline `"Copied to clipboard"` confirmation badge.
+- **Collapsible Palette Drawer, Multi-Palette Workflow & Ghost Overlays:**
+  - **Minimized Swatch Strip & Expandable Drawer:** Starts as a compact, low-profile strip of the active palette's swatches at the bottom of the screen (with one-click hex copy and inline confirmation) to maximize workspace for the 2D and 3D editors. Click the chevron tab on the bottom-right edge to expand the full multi-palette drawer (press `Esc`, click the backdrop, or click the chevron tab again to minimize).
+  - **Multi-Palette Management & Drag Reordering:** Create multiple independent palette rows (**Add palette** clones the previous row as a starting point), click any row to select it for editing, customize per-palette stop counts on the active card, drag the six-dot grip handle on the left of any row to reorder palettes vertically, and delete extra rows.
+  - **Click-to-Copy Swatches:** Click any output color swatch—in either the minimized strip or the expanded palette rows—to copy its uppercase hex code to the clipboard.
   - **$25\%$ Opacity Ghost Previews:** Non-selected palettes remain visible as non-interactive, semi-transparent ghosts (both curves and stop markers) across both 2D editors and the 3D cylinder view so you can compare and harmonize ramps across your entire project.
-- **Session Auto-Save, Undo / Redo, Config JSON & Infinite Painter Export:**
+- **Session Auto-Save, Undo / Redo, Config JSON, CSS & Infinite Painter Export:**
   - **Session Auto-Save (`localStorage`) & Reset:** Automatically saves all palette rows, active selection, stop counts, locks, and sidebar switches (**Tonal Color Scale**, **Gamut Mapping**) to `localStorage` on every edit so refreshing the tab or closing the PWA never loses unsaved work. Click **Reset** below the Undo/Redo buttons in the sidebar header (with a confirmation dialog) to clear saved session data and restore the default palette.
   - Single-step **Undo** (`Ctrl+Z` / `Cmd+Z`) and **Redo** (`Ctrl+Y` / `Cmd+Shift+Z`).
+  - **Export CSS Custom Properties (`.css`):** Opens a live preview dialog to export all palette rows as `:root` CSS variables in `oklch()`, `hex`, or `Both` formats with a customizable `--prefix` (respecting active **Gamut Mapping**), plus one-click **Copy CSS** and **Download `.css`**.
   - **Export Config JSON & Import Config JSON:** Save your complete multi-palette workspace configuration (all rows, stops, Bezier handles, lock states, stop counts, Tonal Color Scale, Gamut Mapping, and active selection) to a `.json` file and reload it anytime.
   - **Export Infinite Painter (`.clrs`):** Opens a naming dialog where you can enter a custom **Palette Name** (defaulting to `Color Shift`) saved into the `.clrs` file's `name` property so Infinite Painter displays your chosen title, exporting all palette rows together into a single `<palette_name>.clrs` file across desktop, tablet, and mobile browsers.
 - **Progressive Web App (PWA) Support:**
   - Includes a web app manifest (`manifest.webmanifest`), custom icons, and a Service Worker (`sw.js`) for offline caching, allowing you to install the generator from supported desktop and mobile browsers as a standalone offline-capable app.
 - **Responsive Cross-Device Layout:**
-  - Uses dynamic viewport sizing (`100dvh`) on desktop and tablet screens so palette rows and export controls remain visible without clipping, and adapts into a single-column scrollable layout on narrow screens.
+  - Uses dynamic viewport sizing (`100dvh`) on desktop and tablet screens with a compact, expandable bottom palette drawer so editors remain unobstructed, and adapts into a single-column scrollable layout on narrow screens.
 
 ## Getting Started
 
@@ -59,7 +61,9 @@ This project is a zero-build, single-file web application.
 | **Expand / Collapse 2D Editor** | Click **Expand** in the editor header (`Esc` to exit full-viewport mode) |
 | **Pan All Unlocked Stops** | Click and drag the background of either 2D editor |
 | **Axis / Coordinate Snap** | Hold `Shift` while dragging the 2D editor background |
-| **Copy Swatch Hex Code** | Click any generated color swatch in the palette rows |
+| **Expand / Minimize Palette Drawer** | Click the chevron tab at the bottom-right (`Esc` or click backdrop to minimize) |
+| **Reorder Palette Rows** | Drag the six-dot grip handle on the left of any palette row |
+| **Copy Swatch Hex Code** | Click any generated color swatch in the minimized strip or palette rows |
 | **Orbit / Zoom 3D View** | Left-click drag to rotate, scroll to zoom, right-click drag to pan |
 | **Undo / Redo** | Toolbar buttons or `Ctrl+Z` / `Ctrl+Y` (`Cmd+Z` / `Cmd+Shift+Z` on Mac) |
 | **Reset All Palettes** | Click **Reset** below the Undo/Redo buttons in the sidebar header |
@@ -67,7 +71,7 @@ This project is a zero-build, single-file web application.
 ## Built With
 
 - **HTML5 Canvas & Inline SVG** — 2D color space gradients, sRGB gamut overlays, interactive Bezier editors, and ghost curve layers
-- **Vanilla JavaScript (ES6+)** — OKlch/OKlab color math, hue-preserving sRGB gamut mapping, arc-length and tonal-weighted sampling, `localStorage` persistence, JSON serialization, and `.clrs` export
+- **Vanilla JavaScript (ES6+)** — OKlch/OKlab color math, hue-preserving sRGB gamut mapping, arc-length and tonal-weighted sampling, `localStorage` persistence, CSS custom properties export, JSON serialization, and `.clrs` export
 - **Three.js** — Interactive 3D cylindrical space visualization
 - **Tailwind CSS** — Responsive UI styling
 - **Web App Manifest & Service Worker** — Installable PWA support with offline caching
