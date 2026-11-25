@@ -34,6 +34,18 @@
         .editor-canvas-svg { cursor: grab; }
         .editor-canvas-svg.is-panning { cursor: grabbing; }
 
+        /* Palette row drag reordering indicators */
+        .palette-row-dragging {
+            opacity: 0.55;
+            transform: scale(0.995);
+        }
+        .palette-drop-above {
+            box-shadow: 0 -2px 0 0 #60a5fa;
+        }
+        .palette-drop-below {
+            box-shadow: 0 2px 0 0 #60a5fa;
+        }
+
         /* Color Input Swatch Styling Fix */
         input[type="color"] {
             -webkit-appearance: none;
@@ -393,19 +405,10 @@
     <!-- Bottom Area: Palette Output -->
     <footer class="bg-slate-900 border-t border-slate-800 px-4 py-4 sm:px-5 sm:py-3 sm:max-h-[50dvh] shrink-0 z-20 flex flex-col gap-2">
         <div id="palettes-list" class="space-y-2 sm:min-h-[5.5rem] sm:flex-1 sm:overflow-y-auto sm:pr-1">
-            <!-- Palette rows will be generated here -->
+            <!-- Palette rows and new-row placeholder will be generated here -->
         </div>
-        <!-- First Button Row: Add palette -->
-        <div class="flex items-center justify-center pt-1 shrink-0">
-            <button id="add-palette-btn" class="py-2 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold tracking-wider rounded-lg border border-slate-700 transition-colors flex items-center justify-center gap-1.5 shadow-sm">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                </svg>
-                <span>Add palette</span>
-            </button>
-        </div>
-        <!-- Second Button Row: Export / Import -->
-        <div class="flex flex-wrap items-stretch sm:items-center justify-center gap-2.5 shrink-0">
+        <!-- Export / Import Buttons -->
+        <div class="flex flex-wrap items-stretch sm:items-center justify-center gap-2.5 pt-1 shrink-0">
             <button id="export-clrs-btn" class="py-2 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold tracking-wider rounded-lg border border-slate-700 transition-colors flex items-center justify-center gap-2 shadow-sm">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
@@ -537,6 +540,11 @@
         let bgPrevAngle = 0;
         let bgCumDH = 0;
         let lastBgMoveEvent = null;
+
+        // Palette row drag-and-drop reordering state
+        let rowDragging = false;
+        let rowDragFromIndex = -1;
+        let rowDropInsertSlot = -1;
 
         // Single-step Undo / Redo state
         let undoSnapshot = null;
@@ -1276,12 +1284,9 @@
                 uiState.valueCheck = e.target.checked;
                 updateAll();
             });
-
-            // Add new palette row (clones the previous row and selects the newly added row)
-            document.getElementById('add-palette-btn').addEventListener('click', addPaletteRow);
         }
 
-        // Multi-palette row selection, addition, and deletion
+        // Multi-palette row selection, addition, reordering, and deletion
         function selectPaletteRow(rowIndex) {
             if (rowIndex < 0 || rowIndex >= appState.palettes.length) return;
             if (appState.activeIndex === rowIndex) return;
@@ -1311,6 +1316,90 @@
             }
             state = appState.palettes[appState.activeIndex];
             updateAll();
+        }
+
+        function clearRowDragVisuals() {
+            const listContainer = document.getElementById('palettes-list');
+            if (!listContainer) return;
+            listContainer.querySelectorAll('[data-palette-row]').forEach(el => {
+                el.classList.remove('palette-row-dragging', 'palette-drop-above', 'palette-drop-below');
+            });
+        }
+
+        function updateRowDropIndicator(clientY) {
+            const listContainer = document.getElementById('palettes-list');
+            if (!listContainer) return;
+
+            // Auto-scroll the palette list container when dragging near its top or bottom edges
+            const listRect = listContainer.getBoundingClientRect();
+            const edgeThreshold = 32;
+            if (clientY < listRect.top + edgeThreshold) {
+                listContainer.scrollTop -= 8;
+            } else if (clientY > listRect.bottom - edgeThreshold) {
+                listContainer.scrollTop += 8;
+            }
+
+            const rowEls = Array.from(listContainer.querySelectorAll('[data-palette-row]'));
+            if (rowEls.length === 0) return;
+
+            let insertSlot = rowEls.length;
+            for (let i = 0; i < rowEls.length; i++) {
+                const rect = rowEls[i].getBoundingClientRect();
+                const midY = rect.top + rect.height / 2;
+                if (clientY < midY) {
+                    insertSlot = i;
+                    break;
+                }
+            }
+
+            rowDropInsertSlot = insertSlot;
+
+            rowEls.forEach((el, idx) => {
+                el.classList.toggle('palette-row-dragging', idx === rowDragFromIndex);
+                el.classList.remove('palette-drop-above', 'palette-drop-below');
+            });
+
+            if (insertSlot !== rowDragFromIndex && insertSlot !== rowDragFromIndex + 1) {
+                if (insertSlot < rowDragFromIndex && rowEls[insertSlot]) {
+                    rowEls[insertSlot].classList.add('palette-drop-above');
+                } else if (insertSlot > rowDragFromIndex + 1 && rowEls[insertSlot - 1]) {
+                    rowEls[insertSlot - 1].classList.add('palette-drop-below');
+                }
+            }
+        }
+
+        function startRowDrag(rowIndex, clientY) {
+            if (appState.palettes.length <= 1) return;
+            rowDragging = true;
+            rowDragFromIndex = rowIndex;
+            rowDropInsertSlot = rowIndex;
+            beginPendingUndo();
+            updateRowDropIndicator(clientY);
+        }
+
+        function finishRowDrag() {
+            if (!rowDragging) return;
+            const fromIndex = rowDragFromIndex;
+            const insertSlot = rowDropInsertSlot;
+
+            rowDragging = false;
+            rowDragFromIndex = -1;
+            rowDropInsertSlot = -1;
+            clearRowDragVisuals();
+
+            const toIndex = insertSlot > fromIndex ? insertSlot - 1 : insertSlot;
+            if (fromIndex >= 0 && toIndex >= 0 && toIndex < appState.palettes.length && toIndex !== fromIndex) {
+                const activeCfg = appState.palettes[appState.activeIndex];
+                const [moved] = appState.palettes.splice(fromIndex, 1);
+                appState.palettes.splice(toIndex, 0, moved);
+                appState.activeIndex = appState.palettes.indexOf(activeCfg);
+                state = appState.palettes[appState.activeIndex];
+                commitPendingUndo();
+                lastRenderedPaletteCount = -1;
+                updateAll();
+            } else {
+                pendingSnapshot = null;
+            }
         }
 
         // Open, cancel, and confirm handlers for the Infinite Painter .clrs export dialog
@@ -2078,6 +2167,11 @@
             }
 
             function handleMove(e) {
+                if (rowDragging) {
+                    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                    updateRowDropIndicator(clientY);
+                    return;
+                }
                 if (bgDragging) {
                     const svg = bgDragSpace === 'LC' ? svgLC : svgHC;
                     const loc = getMouseCoords(e, svg);
@@ -2166,6 +2260,10 @@
             }
 
             function finishDrag() {
+                if (rowDragging) {
+                    finishRowDrag();
+                    return;
+                }
                 if (dragging || bgDragging) {
                     if (dragChanged) {
                         commitPendingUndo();
@@ -2279,19 +2377,20 @@
             });
         }
 
-        // Render all palette rows in the footer (preserves active Color Stops slider DOM during drag/typing)
+        // Render all palette rows in the footer plus the inactive-row placeholder containing "Add palette"
         function renderAllPaletteRows(activePalette, skipStepsInput = false) {
             const listContainer = document.getElementById('palettes-list');
+            const existingRows = listContainer.querySelectorAll('[data-palette-row]');
             const structureChanged =
                 lastRenderedPaletteCount !== appState.palettes.length ||
                 lastRenderedActiveIndex !== appState.activeIndex ||
-                listContainer.children.length !== appState.palettes.length;
+                existingRows.length !== appState.palettes.length;
 
             if (!structureChanged) {
                 appState.palettes.forEach((cfg, rowIndex) => {
                     const isSelected = rowIndex === appState.activeIndex;
                     const palette = isSelected ? activePalette : generatePalette(cfg);
-                    const rowEl = listContainer.children[rowIndex];
+                    const rowEl = existingRows[rowIndex];
                     const badgeCountEl = rowEl.querySelector('.row-steps-count');
                     if (badgeCountEl) badgeCountEl.textContent = cfg.steps;
 
@@ -2313,6 +2412,8 @@
             lastRenderedPaletteCount = appState.palettes.length;
             lastRenderedActiveIndex = appState.activeIndex;
             listContainer.innerHTML = '';
+
+            const canReorder = appState.palettes.length > 1;
 
             appState.palettes.forEach((cfg, rowIndex) => {
                 const isSelected = rowIndex === appState.activeIndex;
@@ -2379,9 +2480,42 @@
                     rowEl.appendChild(stopsBar);
                 }
 
-                // Main Content Line: Badge + Swatches Strip + Optional Delete Button
+                // Main Content Line: Drag Button + Badge + Swatches Strip + Optional Delete Button
                 const mainRowLine = document.createElement('div');
                 mainRowLine.className = 'flex items-center gap-2.5 sm:gap-3 min-w-0';
+
+                // Drag Handle Button for Reordering
+                const dragBtn = document.createElement('button');
+                dragBtn.type = 'button';
+                dragBtn.disabled = !canReorder;
+                dragBtn.title = canReorder ? `Drag to reorder Palette #${rowIndex + 1}` : 'Add another palette to reorder';
+                dragBtn.ariaLabel = `Reorder Palette #${rowIndex + 1}`;
+                dragBtn.className = `shrink-0 p-1.5 rounded-lg border transition-colors touch-none ${
+                    canReorder
+                        ? 'bg-slate-900/90 hover:bg-slate-700/80 text-slate-400 hover:text-slate-200 border-slate-700/80 cursor-grab active:cursor-grabbing'
+                        : 'bg-slate-900/40 text-slate-600 border-slate-800/80 opacity-40 cursor-not-allowed'
+                }`;
+                dragBtn.innerHTML = `
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M7 4a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm0 6a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm0 6a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm9-12a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm0 6a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm0 6a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z"></path>
+                    </svg>
+                `;
+                dragBtn.addEventListener('click', (e) => e.stopPropagation());
+                if (canReorder) {
+                    dragBtn.addEventListener('mousedown', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        startRowDrag(rowIndex, e.clientY);
+                    });
+                    dragBtn.addEventListener('touchstart', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (e.touches && e.touches[0]) {
+                            startRowDrag(rowIndex, e.touches[0].clientY);
+                        }
+                    }, { passive: false });
+                }
+                mainRowLine.appendChild(dragBtn);
 
                 // Left Row Indicator
                 const badgeEl = document.createElement('div');
@@ -2423,6 +2557,30 @@
                 rowEl.appendChild(mainRowLine);
                 listContainer.appendChild(rowEl);
             });
+
+            // Mockup / Placeholder of a new row (styled like an inactive row, containing only "Add palette")
+            const placeholderRow = document.createElement('div');
+            placeholderRow.id = 'add-palette-placeholder-row';
+            placeholderRow.className = 'flex items-center justify-center p-2.5 rounded-xl border transition-all cursor-pointer min-w-0 min-h-[4.75rem] sm:min-h-[5.25rem] bg-slate-950/60 border-slate-800 hover:border-slate-700 hover:bg-slate-800/40 opacity-85 hover:opacity-100';
+            placeholderRow.addEventListener('click', addPaletteRow);
+
+            const addBtn = document.createElement('button');
+            addBtn.id = 'add-palette-btn';
+            addBtn.type = 'button';
+            addBtn.className = 'py-2 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold tracking-wider rounded-lg border border-slate-700 transition-colors flex items-center justify-center gap-1.5 shadow-sm';
+            addBtn.innerHTML = `
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                <span>Add palette</span>
+            `;
+            addBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                addPaletteRow();
+            });
+
+            placeholderRow.appendChild(addBtn);
+            listContainer.appendChild(placeholderRow);
         }
 
         /* --- 4. Three.js 3D Visualization --- */
