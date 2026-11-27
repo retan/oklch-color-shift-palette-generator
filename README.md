@@ -24,11 +24,11 @@ An interactive, browser-based color palette studio specifically designed to crea
   - **Stop & Handle Locking:** Lock individual stops (Start, Middle, End) to freeze both the stop node and its attached Bezier control handles across dragging, background panning, and reflection actions.
 - **Interactive 3D OKlch Space:**
   - Real-time Three.js visualization of the transition curve and generated color stop spheres inside the OKlch cylinder with orbit, zoom, and pan controls.
-- **Collapsible Palette Drawer, Multi-Palette Workflow & Ghost Overlays:**
-  - **Minimized Swatch Strip & Expandable Drawer:** Starts as a compact, low-profile strip of the active palette's swatches at the bottom of the screen (with one-click hex copy and inline confirmation) to maximize workspace for the 2D and 3D editors. Click the chevron tab on the bottom-right edge to expand the full multi-palette drawer (press `Esc`, click the backdrop, or click the chevron tab again to minimize).
+- **Collapsible Palette Drawer, Multi-Palette Workflow & Interactive Ghost Curves:**
+  - **Minimized Swatch Strip & Expandable Drawer:** Starts as a compact, low-profile strip of the active palette's swatches at the bottom of the screen (with one-click hex copy and inline confirmation) to maximize workspace for the 2D and 3D editors. Click the **Output Palettes & Export** tab on the bottom-right edge to expand the full multi-palette drawer (press `Esc`, click the backdrop, or click the tab again to minimize).
   - **Multi-Palette Management & Drag Reordering:** Create multiple independent palette rows (**Add palette** clones the previous row as a starting point), click any row to select it for editing, customize per-palette stop counts on the active card, drag the six-dot grip handle on the left of any row to reorder palettes vertically, and delete extra rows.
   - **Click-to-Copy Swatches:** Click any output color swatch—in either the minimized strip or the expanded palette rows—to copy its uppercase hex code to the clipboard.
-  - **$25\%$ Opacity Ghost Previews:** Non-selected palettes remain visible as non-interactive, semi-transparent ghosts (both curves and stop markers) across both 2D editors and the 3D cylinder view so you can compare and harmonize ramps across your entire project.
+  - **Interactive Ghost Curves & Stop Markers:** Non-selected palettes remain visible at $25\%$ opacity (both curves and stop markers) across both 2D editors and the 3D cylinder view so you can compare and harmonize ramps—hovering highlights an inactive curve in the 2D editors, and clicking any inactive curve or stop marker in either 2D editor or the 3D space switches directly to that palette row.
 - **Session Auto-Save, Undo / Redo, Config JSON, CSS & Infinite Painter Export:**
   - **Session Auto-Save (`localStorage`) & Reset:** Automatically saves all palette rows, active selection, stop counts, locks, and sidebar switches (**Tonal Color Scale**, **Gamut Mapping**) to `localStorage` on every edit so refreshing the tab or closing the PWA never loses unsaved work. Click **Reset** below the Undo/Redo buttons in the sidebar header (with a confirmation dialog) to clear saved session data and restore the default palette.
   - Single-step **Undo** (`Ctrl+Z` / `Cmd+Z`) and **Redo** (`Ctrl+Y` / `Cmd+Shift+Z`).
@@ -61,7 +61,8 @@ This project is a zero-build, single-file web application.
 | **Expand / Collapse 2D Editor** | Click **Expand** in the editor header (`Esc` to exit full-viewport mode) |
 | **Pan All Unlocked Stops** | Click and drag the background of either 2D editor |
 | **Axis / Coordinate Snap** | Hold `Shift` while dragging the 2D editor background |
-| **Expand / Minimize Palette Drawer** | Click the chevron tab at the bottom-right (`Esc` or click backdrop to minimize) |
+| **Switch Active Palette** | Click any palette row in the drawer or click an inactive ghost curve/stop in the 2D or 3D editors |
+| **Expand / Minimize Palette Drawer** | Click the **Output Palettes & Export** tab at the bottom-right (`Esc` or click backdrop to minimize) |
 | **Reorder Palette Rows** | Drag the six-dot grip handle on the left of any palette row |
 | **Copy Swatch Hex Code** | Click any generated color swatch in the minimized strip or palette rows |
 | **Orbit / Zoom 3D View** | Left-click drag to rotate, scroll to zoom, right-click drag to pan |
@@ -70,9 +71,9 @@ This project is a zero-build, single-file web application.
 
 ## Built With
 
-- **HTML5 Canvas & Inline SVG** — 2D color space gradients, sRGB gamut overlays, interactive Bezier editors, and ghost curve layers
+- **HTML5 Canvas & Inline SVG** — 2D color space gradients, sRGB gamut overlays, interactive Bezier editors, and clickable ghost curve layers
 - **Vanilla JavaScript (ES6+)** — OKlch/OKlab color math, hue-preserving sRGB gamut mapping, arc-length and tonal-weighted sampling, `localStorage` persistence, CSS custom properties export, JSON serialization, and `.clrs` export
-- **Three.js** — Interactive 3D cylindrical space visualization
+- **Three.js** — Interactive 3D cylindrical space visualization with raycasted ghost curve selection
 - **Tailwind CSS** — Responsive UI styling
 - **Web App Manifest & Service Worker** — Installable PWA support with offline caching
 
