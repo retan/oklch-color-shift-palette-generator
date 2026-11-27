@@ -31,6 +31,9 @@
         .inner-point { fill: currentColor; pointer-events: none; }
         .ghost-main-point { fill: #f8fafc; stroke: #0f172a; stroke-width: 2; r: 7; }
         .ghost-inner-point { r: 3.5; }
+        .ghost-palette { cursor: pointer; opacity: 0.25; transition: opacity 0.15s ease; }
+        .ghost-palette:hover { opacity: 0.6; }
+        .ghost-hit-curve { stroke: transparent; fill: none; stroke-width: 14; stroke-linecap: round; }
         .editor-canvas-svg { cursor: grab; }
         .editor-canvas-svg.is-panning { cursor: grabbing; }
 
@@ -346,8 +349,8 @@
                             <!-- Grid generated dynamically -->
                             <g id="lc-grid"></g>
 
-                            <!-- Non-selected palette ghosts (non-interactive) -->
-                            <g id="lc-ghosts" pointer-events="none"></g>
+                            <!-- Non-selected palette ghosts (click to switch active palette) -->
+                            <g id="lc-ghosts"></g>
 
                             <!-- Connecting handle lines -->
                             <line id="lc-h1-line" class="handle-line" />
@@ -410,8 +413,8 @@
                             <!-- Grid generated dynamically -->
                             <g id="hc-grid"></g>
 
-                            <!-- Non-selected palette ghosts (non-interactive) -->
-                            <g id="hc-ghosts" pointer-events="none"></g>
+                            <!-- Non-selected palette ghosts (click to switch active palette) -->
+                            <g id="hc-ghosts"></g>
 
                             <!-- Connecting handle lines -->
                             <line id="hc-h1-line" class="handle-line" />
@@ -605,6 +608,7 @@
                 // Ignore corrupted session storage data
             }
         }
+
         // Visual Editor UI state (Value Check turned off by default, bottom palette drawer minimized by default)
         const uiState = {
             valueCheck: false,
@@ -1517,7 +1521,8 @@
         }
 
         function deletePaletteRow(rowIndex) {
-            if (rowIndex <= 0 || rowIndex >= appState.palettes.length) return;
+            if (appState.palettes.length <= 1) return;
+            if (rowIndex < 0 || rowIndex >= appState.palettes.length) return;
             recordImmediateUndo();
             appState.palettes.splice(rowIndex, 1);
             if (appState.activeIndex >= appState.palettes.length) {
@@ -2293,7 +2298,7 @@
         }
 
         function updateSVGs() {
-            // Render non-selected palettes as 25% opacity non-interactive ghosts
+            // Render non-selected palettes as 25% opacity interactive ghosts (click to switch active palette)
             const lcGhosts = document.getElementById('lc-ghosts');
             const hcGhosts = document.getElementById('hc-ghosts');
             let lcGhostHtml = '';
@@ -2326,8 +2331,14 @@
                                    `<circle cx="${hx}" cy="${hy}" class="ghost-inner-point" fill="${hex}" />`;
                 });
 
-                lcGhostHtml += `<g opacity="0.25"><path d="${lcD1}" class="curve-1" /><path d="${lcD2}" class="curve-2" />${lcStopsHtml}</g>`;
-                hcGhostHtml += `<g opacity="0.25"><path d="${hcD1}" class="curve-1" /><path d="${hcD2}" class="curve-2" />${hcStopsHtml}</g>`;
+                lcGhostHtml += `<g class="ghost-palette" data-palette-index="${idx}">` +
+                               `<title>Palette #${idx + 1} (Click to select)</title>` +
+                               `<path d="${lcD1}" class="ghost-hit-curve" /><path d="${lcD2}" class="ghost-hit-curve" />` +
+                               `<path d="${lcD1}" class="curve-1" /><path d="${lcD2}" class="curve-2" />${lcStopsHtml}</g>`;
+                hcGhostHtml += `<g class="ghost-palette" data-palette-index="${idx}">` +
+                               `<title>Palette #${idx + 1} (Click to select)</title>` +
+                               `<path d="${hcD1}" class="ghost-hit-curve" /><path d="${hcD2}" class="ghost-hit-curve" />` +
+                               `<path d="${hcD1}" class="curve-1" /><path d="${hcD2}" class="curve-2" />${hcStopsHtml}</g>`;
             });
 
             lcGhosts.innerHTML = lcGhostHtml;
@@ -2403,7 +2414,7 @@
             });
         }
 
-        // Mouse Handlers for SVG dragging
+        // Mouse & Touch Handlers for SVG dragging and palette row reordering
         function initInteractions() {
             const svgLC = document.getElementById('svg-lc');
             const svgHC = document.getElementById('svg-hc');
@@ -2465,6 +2476,7 @@
             function registerBackgroundDrag(svg, space) {
                 function startBgDrag(e) {
                     if (e.target && e.target.classList && e.target.classList.contains('point')) return;
+                    if (e.target && e.target.closest && e.target.closest('[data-palette-index]')) return;
                     bgDragging = true;
                     bgDragSpace = space;
                     bgStartLoc = getMouseCoords(e, svg);
@@ -2486,6 +2498,35 @@
 
             registerBackgroundDrag(svgLC, 'LC');
             registerBackgroundDrag(svgHC, 'HC');
+
+            // Allow switching active palette by clicking an inactive (ghost) curve in 2D visual editors
+            function registerGhostSelection(ghostContainerId) {
+                const ghostContainer = document.getElementById(ghostContainerId);
+                if (!ghostContainer) return;
+
+                ghostContainer.addEventListener('mousedown', (e) => {
+                    if (e.target.closest('[data-palette-index]')) {
+                        e.stopPropagation();
+                    }
+                });
+                ghostContainer.addEventListener('touchstart', (e) => {
+                    if (e.target.closest('[data-palette-index]')) {
+                        e.stopPropagation();
+                    }
+                }, { passive: true });
+                ghostContainer.addEventListener('click', (e) => {
+                    const ghostGroup = e.target.closest('[data-palette-index]');
+                    if (!ghostGroup) return;
+                    e.stopPropagation();
+                    const idx = parseInt(ghostGroup.dataset.paletteIndex, 10);
+                    if (!Number.isNaN(idx)) {
+                        selectPaletteRow(idx);
+                    }
+                });
+            }
+
+            registerGhostSelection('lc-ghosts');
+            registerGhostSelection('hc-ghosts');
 
             function applyBackgroundDrag(loc, shiftPressed) {
                 if (!bgDragging || !bgStartState) return;
@@ -2562,8 +2603,10 @@
 
             function handleMove(e) {
                 if (rowDragging) {
-                    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-                    updateRowDropIndicator(clientY);
+                    const clientY = e.touches && e.touches[0] ? e.touches[0].clientY : e.clientY;
+                    if (typeof clientY === 'number') {
+                        updateRowDropIndicator(clientY);
+                    }
                     return;
                 }
                 if (bgDragging) {
@@ -2771,11 +2814,11 @@
             });
         }
 
-        // Render all palette rows in the footer plus the inactive-row placeholder containing "Add palette"
+        // Render all palette rows and the "+ Add palette" placeholder row in the expanded drawer
         function renderAllPaletteRows(activePalette, skipStepsInput = false) {
-            buildMinimizedSwatchStrip(activePalette, state);
-
             const listContainer = document.getElementById('palettes-list');
+            if (!listContainer) return;
+
             const existingRows = listContainer.querySelectorAll('[data-palette-row]');
             const structureChanged =
                 lastRenderedPaletteCount !== appState.palettes.length ||
@@ -2876,40 +2919,38 @@
                     rowEl.appendChild(stopsBar);
                 }
 
-                // Main Content Line: Drag Button + Badge + Swatches Strip + Optional Delete Button
+                // Main Content Line: Drag Grip + Badge + Swatches Strip + Optional Delete Button
                 const mainRowLine = document.createElement('div');
-                mainRowLine.className = 'flex items-center gap-2.5 sm:gap-3 min-w-0';
+                mainRowLine.className = 'flex items-center gap-2 sm:gap-2.5 min-w-0';
 
-                // Drag Handle Button for Reordering
+                // Drag Handle Button
                 const dragBtn = document.createElement('button');
                 dragBtn.type = 'button';
                 dragBtn.disabled = !canReorder;
-                dragBtn.title = canReorder ? `Drag to reorder Palette #${rowIndex + 1}` : 'Add another palette to reorder';
-                dragBtn.ariaLabel = `Reorder Palette #${rowIndex + 1}`;
+                dragBtn.title = canReorder ? 'Drag to reorder palette row' : 'Add another palette to reorder';
                 dragBtn.className = `shrink-0 p-1.5 rounded-lg border transition-colors touch-none ${
                     canReorder
-                        ? 'bg-slate-900/90 hover:bg-slate-700/80 text-slate-400 hover:text-slate-200 border-slate-700/80 cursor-grab active:cursor-grabbing'
-                        : 'bg-slate-900/40 text-slate-600 border-slate-800/80 opacity-40 cursor-not-allowed'
+                        ? 'bg-slate-900/90 hover:bg-slate-700 text-slate-400 hover:text-white border-slate-700/80 cursor-grab active:cursor-grabbing'
+                        : 'bg-slate-900/40 text-slate-600 border-slate-800/70 opacity-45 cursor-not-allowed'
                 }`;
                 dragBtn.innerHTML = `
                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M7 4a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm0 6a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm0 6a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm9-12a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm0 6a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm0 6a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z"></path>
+                        <path d="M7 4a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm0 6a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm0 6a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm7-12a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm0 6a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm0 6a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z"></path>
                     </svg>
                 `;
                 dragBtn.addEventListener('click', (e) => e.stopPropagation());
                 if (canReorder) {
                     dragBtn.addEventListener('mousedown', (e) => {
-                        e.preventDefault();
                         e.stopPropagation();
+                        e.preventDefault();
                         startRowDrag(rowIndex, e.clientY);
                     });
                     dragBtn.addEventListener('touchstart', (e) => {
-                        e.preventDefault();
                         e.stopPropagation();
                         if (e.touches && e.touches[0]) {
                             startRowDrag(rowIndex, e.touches[0].clientY);
                         }
-                    }, { passive: false });
+                    }, { passive: true });
                 }
                 mainRowLine.appendChild(dragBtn);
 
@@ -2932,8 +2973,8 @@
                 buildSwatchesStrip(swatchesEl, palette, cfg, rowIndex);
                 mainRowLine.appendChild(swatchesEl);
 
-                // Delete Button (present next to every row except the first one)
-                if (rowIndex > 0) {
+                // Delete Button (present whenever there is more than 1 palette row)
+                if (appState.palettes.length > 1) {
                     const delBtn = document.createElement('button');
                     delBtn.type = 'button';
                     delBtn.title = `Delete Palette #${rowIndex + 1}`;
@@ -2954,28 +2995,22 @@
                 listContainer.appendChild(rowEl);
             });
 
-            // Mockup / Placeholder of a new row (styled like an inactive row, containing only "Add palette")
+            // Mockup / placeholder of a new inactive row containing the "Add palette" button
             const placeholderRow = document.createElement('div');
             placeholderRow.id = 'add-palette-placeholder-row';
-            placeholderRow.className = 'flex items-center justify-center p-2.5 rounded-xl border transition-all cursor-pointer min-w-0 min-h-[4.75rem] sm:min-h-[5.25rem] bg-slate-950/60 border-slate-800 hover:border-slate-700 hover:bg-slate-800/40 opacity-85 hover:opacity-100';
-            placeholderRow.addEventListener('click', addPaletteRow);
-
-            const addBtn = document.createElement('button');
-            addBtn.id = 'add-palette-btn';
-            addBtn.type = 'button';
-            addBtn.className = 'py-2 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold tracking-wider rounded-lg border border-slate-700 transition-colors flex items-center justify-center gap-1.5 shadow-sm';
-            addBtn.innerHTML = `
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                </svg>
-                <span>Add palette</span>
+            placeholderRow.className = 'flex items-center justify-center p-2.5 rounded-xl border border-dashed border-slate-800 bg-slate-950/60 hover:border-slate-700 hover:bg-slate-800/40 opacity-85 hover:opacity-100 transition-all cursor-pointer';
+            placeholderRow.innerHTML = `
+                <button id="add-palette-btn" type="button" class="py-1.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold tracking-wider rounded-lg border border-slate-700 transition-colors inline-flex items-center justify-center gap-1.5 shadow-sm">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    <span>Add palette</span>
+                </button>
             `;
-            addBtn.addEventListener('click', (e) => {
+            placeholderRow.addEventListener('click', (e) => {
                 e.stopPropagation();
                 addPaletteRow();
             });
-
-            placeholderRow.appendChild(addBtn);
             listContainer.appendChild(placeholderRow);
         }
 
@@ -3029,6 +3064,49 @@
             );
             scene.add(curveObject);
 
+            // Allow clicking inactive (ghost) curves or spheres in 3D space to switch active palette
+            const raycaster = new THREE.Raycaster();
+            raycaster.params.Line.threshold = 0.35;
+            const pointerNdc = new THREE.Vector2();
+            let pointerDownPos = null;
+
+            function getHitGhostPaletteIndex(clientX, clientY) {
+                if (!scene || !scene.ghostGroup || scene.ghostGroup.children.length === 0) return -1;
+                const rect = renderer.domElement.getBoundingClientRect();
+                if (rect.width <= 0 || rect.height <= 0) return -1;
+                pointerNdc.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+                pointerNdc.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+                raycaster.setFromCamera(pointerNdc, camera);
+                const hits = raycaster.intersectObjects(scene.ghostGroup.children, false);
+                for (let i = 0; i < hits.length; i++) {
+                    const idx = hits[i].object && hits[i].object.userData ? hits[i].object.userData.paletteIndex : undefined;
+                    if (typeof idx === 'number') return idx;
+                }
+                return -1;
+            }
+
+            renderer.domElement.addEventListener('pointerdown', (e) => {
+                pointerDownPos = { x: e.clientX, y: e.clientY };
+            });
+
+            renderer.domElement.addEventListener('pointermove', (e) => {
+                if (e.buttons !== 0) return;
+                const hitIdx = getHitGhostPaletteIndex(e.clientX, e.clientY);
+                container.style.cursor = hitIdx >= 0 ? 'pointer' : '';
+            });
+
+            renderer.domElement.addEventListener('pointerup', (e) => {
+                if (!pointerDownPos) return;
+                const distMoved = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
+                pointerDownPos = null;
+                if (distMoved < 6) {
+                    const hitIdx = getHitGhostPaletteIndex(e.clientX, e.clientY);
+                    if (hitIdx >= 0) {
+                        selectPaletteRow(hitIdx);
+                    }
+                }
+            });
+
             // Resize observer
             new ResizeObserver(() => {
                 if (container.clientWidth > 0 && container.clientHeight > 0) {
@@ -3050,7 +3128,7 @@
         function update3D(palette) {
             if (!curveObject) return;
 
-            // Render non-selected palettes as 25% opacity ghosts in 3D space
+            // Render non-selected palettes as 25% opacity clickable ghosts in 3D space
             if (!scene.ghostGroup) {
                 scene.ghostGroup = new THREE.Group();
                 scene.add(scene.ghostGroup);
@@ -3091,7 +3169,9 @@
                     opacity: 0.25,
                     depthWrite: false
                 });
-                scene.ghostGroup.add(new THREE.Line(gCurveGeo, gCurveMat));
+                const gCurveLine = new THREE.Line(gCurveGeo, gCurveMat);
+                gCurveLine.userData.paletteIndex = idx;
+                scene.ghostGroup.add(gCurveLine);
 
                 let gPalette = generatePalette(cfg);
                 gPalette.forEach(p => {
@@ -3110,6 +3190,7 @@
                     });
                     let mesh = new THREE.Mesh(ghostSphereGeo, mat);
                     mesh.position.set(x, y, z);
+                    mesh.userData.paletteIndex = idx;
                     scene.ghostGroup.add(mesh);
                 });
             });
@@ -3176,7 +3257,10 @@
             renderLCBackground(); // dynamically updates the LC background if the mid hue, gamut mapping, or value check changed
             renderHCBackground(); // dynamically updates the HC background if mid lightness, gamut mapping, or value check changed
             let generatedPalette = generatePalette(state);
-            renderAllPaletteRows(generatedPalette, skipStepsInput);
+            buildMinimizedSwatchStrip(generatedPalette, state);
+            if (uiState.paletteDrawerExpanded) {
+                renderAllPaletteRows(generatedPalette, skipStepsInput);
+            }
             update3D(generatedPalette);
             saveSessionState();
         }
@@ -3190,7 +3274,6 @@
             initInteractions();
             init3D();
             updateUndoRedoButtons();
-            setPaletteDrawerExpanded(false);
             updateAll();
         };
 
